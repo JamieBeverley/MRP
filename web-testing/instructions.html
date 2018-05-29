@@ -1,0 +1,240 @@
+<html>
+<head>
+   <meta charset='utf-8'>
+   <link rel="stylesheet" type ="text/css" href="style.css">
+
+   <style type="text/css">
+      * {box-sizing:border-box}
+      /* Slideshow container */
+      .slideshow-container {
+       max-width: 1000px;
+       position: relative;
+       margin: auto;
+      }
+      /* Hide the images by default */
+      .instructionBlock {
+         display: none;
+      }
+
+      /* Next & previous buttons */
+      .prev, .next {
+       background-color: rgba(200,200,200,0.8);
+       cursor: pointer;
+       position: absolute;
+       top: 50%;
+       width: auto;
+       margin-top: -22px;
+       padding: 16px;
+       color: white;
+       font-weight: bold;
+       font-size: 18px;
+       transition: 0.6s ease;
+       border-radius: 10px 0 0 10px;
+      }
+
+      /* Position the "next button" to the right */
+      .next {
+       right: 0;
+       border-radius: 0 10px 10px 0;
+      }
+
+      /* On hover, add a black background color with a little bit see-through */
+      .prev:active, .next:active {
+       background-color: rgba(0,0,0,0.8);
+      }
+
+      /* Caption text */
+      .text {
+       color: #f2f2f2;
+       font-size: 15px;
+       padding: 8px 12px;
+       position: absolute;
+       bottom: 8px;
+       width: 100%;
+       text-align: center;
+      }
+
+
+      /* The dots/bullets/indicators */
+      .dot {
+       cursor: pointer;
+       height: 15px;
+       width: 15px;
+       margin: 0 2px;
+       background-color: rgb(200,200,200);
+       border-radius: 50%;
+       display: inline-block;
+       transition: background-color 0.6s ease;
+      }
+
+      .active, .dot:hover {
+       background-color: #717171;
+      }
+
+      /* Fading animation */
+      .fade {
+       -webkit-animation-name: fade;
+       -webkit-animation-duration: 1.5s;
+       animation-name: fade;
+       animation-duration: 1.5s;
+      }
+
+      @-webkit-keyframes fade {
+       from {opacity: .4}
+       to {opacity: 1}
+      }
+
+      @keyframes fade {
+       from {opacity: .4}
+       to {opacity: 1}
+      }
+   </style>
+</head>
+<body>
+<h1 style='text-align:center'>Cumulonimbus</h1>
+<div class="slideshow-container">
+
+  <div class="instructionBlock">
+    <p>
+      Cumulonimbus is an interactive web installation and performance that seeks to explore the acoustic qualities of weather phenomena through machine listening and re-sonification.
+      <br></br>
+      People anywhere in the world are invited to lend their smartphones to extract sonic features from the weather in their local environment and listen to a re-sonification of that data. You can choose to listen to re-sonifications of other active users' weather through a map interface. During a performance of Cumulonimbus, live-streamed sound features will be used as material for musical improvisation performed in front of a live audience and streamed back to your smartphone.
+      <br></br>
+      Cumulonimbus seeks to foster a greater appreciation for, and understanding of, the elusive phenomena of global weather systems through participatory sound art.
+      <br></br>
+      Please review the following instructions before participating. These instructions can be returned to at any time.
+     </p>
+  </div>
+
+  <div class="instructionBlock">
+    <h3>Setup</h3>
+    <ul>
+      <li>
+        Bring your phone and headphones to an area where you have internet access and can hear sounds created by weather (rain, hail, thunder, or a quieter ambiance of a sunny or snowy day).
+      </li>
+      <li>
+        Please do not enter dangerous weather areas for this piece. Weather can be listened to from a window or sheltered area, and more dramatic weather sounds do not necessarily translate to more spectacular re-sonifications!
+      </li>
+    </ul>
+  </div>
+
+  <div class="instructionBlock">
+    <h3>Listening</h3>
+    <ul>
+      <li>
+        Plug in your headphones (to avoid feedback) and select from the 'Listen' drop-down menu the source you would like to listen to.
+      </li>
+
+      <li>You can listen to 3 different re-sonifications:
+        <ol>
+          <li>Listen to a re-sonification of your own weather environment. Your phone will extract sonic features of the weather in your immediate environment and resynthesize new sounds from them.</li>
+          <li>Listen to a re-sonification of another user's weather environment. Each point on the map corresponds to an active user in that approximate location, tap on a point to hear a re-sonification of the features streamed by that user.</li>
+          <li>If a performance of Cumulonimbus is in progress somewhere in the world, you can listen to a live-performed stereo re-sonification of the weather data shared by other connected users.</li>
+        </ol>
+      </li>
+      <li>
+        Hit the (🔊) icon to listen/mute.
+      </li>
+    </ul>
+  </div>
+
+    <div class="instructionBlock">
+      <h3>Sharing</h3>
+      <ul>
+        <li>Hit 'Share' to allow users to listen to re-sonifications of your weather environment.</li>
+        <li>Your phone will stream the extracted sound features of your immediate environment (not the sound itself) to the website for other users to listen to, and for the performer (if a performance is in progress) to use as material for musical improvisation.</li>
+        <li>When you begin sharing, your approximate location will also be shared on the website. A point will appear on the map with a wider radius of your location such that your position within a city cannot be determined.</li>
+        <li>Extracted sound features that are streamed to the website will be archived in a database to be re-sonified in later performances.</li>
+        <li>Participation is completely anonymous so once data has been streamed it cannot be retrieved or erased from the database. </li>
+        <li>At any moment you cant hit 'Stop Sharing' to remove your position from the map and stop streaming sound features to the website. </li>
+      </ul>
+    </div>
+
+
+  <div class="instructionBlock">
+    <div style="text-align:center">
+      <p> </p>
+      <input type="button" value="Start!" style="border-radius:15px;font-size:36px;border:none;background-color: rgb(140,240,120);width:300px;height:75px"> </input>
+      <p>If you have any questions please email: beverljw@mcmaster.ca</p>
+    </div>
+  </div>
+
+
+  <a class="prev" id="prev" onclick="plusSlides(-1)">&#10094;</a>
+  <a class="next" id="next" onclick="plusSlides(1)">&#10095;</a>
+
+  <div style="text-align:center">
+    <span class="dot" onclick="currentSlide(0)"></span>
+    <span class="dot" onclick="currentSlide(1)"></span>
+    <span class="dot" onclick="currentSlide(2)"></span>
+    <span class="dot" onclick="currentSlide(3)"></span>
+    <span class="dot" onclick="currentSlide(4)"></span>
+
+  </div>
+
+</div>
+<br>
+
+</body>
+<script type="text/javascript">
+ var slideIndex = 0;
+ showSlides(slideIndex);
+
+ // Next/previous controls
+ function plusSlides(n) {
+  showSlides(slideIndex += n);
+ }
+
+ // Thumbnail image controls
+ function currentSlide(n) {
+  showSlides(slideIndex = n);
+ }
+
+ function showSlides(n) {
+  var i;
+  var dots = document.getElementsByClassName("dot");
+  var slides = document.getElementsByClassName("instructionBlock");
+  if (n >= slides.length-1) {
+    slideIndex = slides.length-1;
+    document.getElementById("next").style.display="none"
+  } else {
+    document.getElementById("next").style.display="block";
+  }
+  if (n <= 0) {
+    slideIndex = 0
+    document.getElementById("prev").style.display="none";
+  } else {
+    document.getElementById("prev").style.display="block";
+  }
+  for (i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+      if(i<=n){dots[i].style.backgroundColor = "rgb(140,240,120 )"}
+      else {dots[i].style.backgroundColor = "rgb(200,200,200)"}
+  }
+  slides[slideIndex].style.display = "block";
+ }
+</script>
+</html>
+<!-- - don't go into severe weather
+- severe  weather doesn't make a better sonification
+
+- geo location
+
+- what data
+- withdrawal
+- anonymous participation
+
+- infinite data retention
+- data can't be traced back to audience
+- data on private server
+<div class="instructionBlock">
+  <h3>Data Collection</h3>
+  <ul>
+    <li>The sound features your device detects cannot be used to recreate the original sound. </li>
+    <li>Your geographic location will be approximated within a 30km radius.</li>
+    <li>Streamed data will be archived in a database to be resonified in later performances.</li>
+    <li>Participation is completely anonymous so once data has been streamed it cannot be retrieved or erased from the database. </li>
+  </ul>
+</div>
+
+ -->

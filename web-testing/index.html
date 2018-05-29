@@ -1,0 +1,100 @@
+<html>
+<head>
+  <meta charset='utf-8'>
+
+  <script src="meyda.min.js"></script>
+   <link href="style.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+  <div>
+    Global Gain <input id="globalGain" onchange="updateGain()" type='number' value='0' step="any"></input>
+  </div>
+  <div>
+    <input type="button" value="start audio context" onclick="start()"></input>
+    <input type="button" value="soundTest" onclick="soundTest()"></input>
+  </div>
+  <div>
+    <b>Sine:</b>
+    freq<input type="number" value="440" id="sineFreq"></input>
+    <input type="button" value="play" onclick="startSine()"></input>
+    <input type="button" value="stop" onclick="stopSine()"></input>
+    <input id="sineDb" type="number" value="-20"></input>
+  </div>
+  <div>
+    Harmonics:
+    <input type="number" value="440" id="timbreFundamental">freq: </input>
+    <input type="button" value="play" onclick="startTimbral()"></input>
+    <input type="button" value="stop" onclick="stopTimbral()"></input>
+  </div>
+  <div>
+    Whitenoise:
+    <input type="button" value="play" onclick="startWhitenoise()"></input>
+    <input type="button" value="stop" onclick="stopWhitenoise()"></input>
+
+    Filter freq:<input type="number" step="any" value="2000" id="filterFreq"></input>
+    Filter Q:<input type="number" step="any" value="1" id="filterQ"></input>
+    Filter gain:<input type="number" step="any" value="0" id="filterGain"></input>
+
+  </div>
+  <div>
+    <input type="button" value="play thunder" onclick="playBuffer('samples/thunder.wav')"></input>
+    <input type="button" value="play clear" onclick="playBuffer('samples/clear.wav')"></input>
+    <!-- <input type="button" value="play rain(doesn't wrk)" onclick="playBuffer('samples/rain.wav')"></input> -->
+    <input type="button" value="play rain2" onclick="playBuffer('samples/rain2.wav')"></input>
+    <input type="button" value="play wind" onclick="playBuffer('samples/wind.wav')"></input>
+    <input type="button" value="play wind2" onclick="playBuffer('samples/wind2.wav')"></input>
+    <!-- <input type="button" value="play hail(doesn't wrk)" onclick="playBuffer('samples/hail.wav')"></input> -->
+    <!-- <input type="button" value="play hail2(doesn't wrk)" onclick="playBuffer('samples/hail2.wav')"></input> -->
+    <input id="loopCheckbox" type="checkbox" checked="true" value="loop"></input>
+    <input type="button" value="stop" onclick="stopBuffers()"></input>
+
+    <input type="button" value="play hail2(doesn't wrk)" onclick="playBuffer('samples/hail2.wav')"></input>
+
+  </div>
+  <div>
+    <input type="button" value="startMeyda" onclick="startMeyda()"></input>
+    <input type="button" value="stopMeyda" onclick="meydaAnalyzer.stop()"></input>
+  </div>
+  <div>
+    <input type="button" value="createMicrophoneNode" onclick="createMicrophoneNode()"></input>
+    <input type="button" value="playMicrophone" onclick="playMicrophone()"></input>
+    <input type="button" value="stopMicrophone" onclick="stopMicrophone()"></input>
+  </div>
+
+  <div class="visualizationsContainer">
+    Data Visulization
+    <div>
+      <input type="button" value="hide" onclick="document.getElementById('dataVisualization').style.display ='none'"> </button>
+      <input type="button" value="show" onclick="document.getElementById('dataVisualization').style.display=''"> </button>
+    </div>
+    <div id="dataVisualization"></div>
+  </div>
+
+  <div class="visualizationsContainer">
+    Params:
+    <div>
+      <input type="button" value="hide" onclick="document.getElementById('paramVisualization').style.display ='none'"> </button>
+      <input type="button" value="show" onclick="document.getElementById('paramVisualization').style.display=''"> </button>
+    </div>
+    <div id="paramVisualization"></div>
+  </div>
+
+<!-- <div class='visualization'>
+  <label>"+featureList[i]+":</label>
+  <canvas id =featureList[i] width='800px' height='200px'>
+    <div class='canvasMaxOverlay' id='"+featureList[i]+"CanvasMax'></div>
+    <div class='canvasMinOverlay' id='CanvasMin'></div>
+  </canvas>
+</div>
+
+<div class='visualization'>
+  <label>"+featureList[i]+": </label>
+  <div>
+    <canvas id='"+featureList[i]+"Canvas' width='800px' height='200px'>
+      <div class='canvasMaxOverlay' id='"+featureList[i]+"CanvasMax'></div>
+      <div class='canvasMinOverlay' id='CanvasMin'></div> </canvas></div> <div id = "+featureList[i]+"> </div> </div>\n" -->
+
+
+</body>
+  <script src="client.js"></script>
+</html>
