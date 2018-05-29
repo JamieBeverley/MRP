@@ -1,0 +1,12 @@
+#!/bin/bash
+
+for filename in $1*.wav; do
+    # for ((i=0; i<=3; i++)); do
+    #     ./MyProgram.exe "$filename" "Logs/$(basename "$filename" .txt)_Log$i.txt"
+    # done
+    f=$(basename -- "$fullfile")
+    e="${filename##*.}"
+    f="${filename%.*}"
+    # echo $f.json
+    meyda $filename loudness spectralCentroid amplitudeSpectrum rms spectralFlatness --o=$f.json --format=json
+done
