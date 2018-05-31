@@ -263,119 +263,23 @@ function analyze (f){
     nonGraphables[i].windowedValues = calculateWindowedValues(nonGraphables[i].vals,longWindow,mediumWindow,shortWindow);
   }
 
-  calculatePitch();
-  calculateTurbidity();
-  calculateStrength();
-  calculateClarity();
-}
 
 
-function calculatePitch(){
-  // var m = mean(features['loudness'].specific)
-  // var maximum = max(features['loudness'].specific)
-  var m = mean(features['amplitudeSpectrum'])
-  var maximum = max(features['amplitudeSpectrum'])
-  // TODO - factor in spectral flatness
-
-  // pitchWindow.push(maximum/m)
-  // pitchWindow = pitchWindow.slice(-80);
-  // var pitch = clip(mean(pitchWindow)/128,0,1)
-  params.pitch.vals.push(clip(maximum/m/128,0,1))
+  params.pitch.vals.push(calculatePitch(features, nonGraphables));
   params.pitch.vals = params.pitch.vals.slice(-1*longWindow);
-}
 
 
-// TODO - peak/gust detections
-function calculateTurbidity(){
-  // var centroid = nonGraphables['spectralCentroid']
-  // var centroidComponent = centroid.long.variance
-  var spectralTurbidity, powerTurbidity;
-  var centroid = nonGraphables['spectralCentroid'].windowedValues;
-  var rms = nonGraphables['rms'].windowedValues;
-  // logarithmic growth - littl bit of deviation goes a long way (don't expect much deviation in most cases)
-  // greaatest case is probably thunder where centroid is suddenly very low
-  // pitchTurbidity = Math.pow((centroid.long.stdDev/3+centroid.medium.stdDev/3+centroid.short.stdDev/3)*(12.8)/fftSize,1/3);
-  spectralTurbidity = clip(scaleSpectralTurbidity((centroid.long.stdDev/3+centroid.medium.stdDev/3+centroid.short.stdDev/3)/20),0,1);
-  // powerTurbidity = rms.short.stdDev/rms.short.mean;
-  // powerTurbidity = clip((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.5,0,1);
-  powerTurbidity = Math.sqrt((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.05);
-
-  // powerTurbidity = rms.long.stdDev/rms.long.mean/0.7/3 //0.7 just a scaling thing - empirically found that the max it would ever produce is 0.7
-  // powerTurbidity = powerTurbidity + rms.medium.stdDev/rms.medium.mean/0.7/3;
-  // powerTurbidity = clip(powerTurbidity+rms.short.stdDev/rms.short.mean/0.7/3,0,1);
-
-  var r = 0.6*powerTurbidity+0.4*spectralTurbidity;
-  params.turbidity.vals.push(r);
-  params.turbidity.vals = params.turbidity.vals.slice(-1*longWindow);
-}
-
-
-
-// Lower frequency+higher volume -> greater 'strength'
-function calculateStrength(){
-  // how to normalize this accross devices - some will be recording louder than others?
-  // calibration period?
-  var loudnessTotal = nonGraphables['loudnessTotal'].windowedValues
-  // var loudness = clip(Math.sqrt((loudnessTotal.long.mean+loudnessTotal.medium.mean+loudnessTotal.short.mean)/3/50),0,1)
-  var loudness = clip((loudnessTotal.long.mean+loudnessTotal.medium.mean+loudnessTotal.short.mean)/3/50,0,1)
-
-  var centroid = nonGraphables['spectralCentroid'].windowedValues;
-  var normalizedCentroid = clip(scaleCentroidStrength(((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3)/(fftSize/2)),0,1)
-  // centroid = clip(scaleCentroidStrength(normalizedCentroid),0,1);
-
-  var r =  normalizedCentroid*0.2+0.8*loudness;
-  // var centroidControl = 0.1
-  // var r = (centroidControl*normalizedCentroid+(1-centroidControl))*loudness
-  params.strength.vals.push(r)
+  params.strength.vals.push(calculateStrength(features, nonGraphables))
   params.strength.vals = params.strength.vals.slice(-1*longWindow)
 
-}
+  params.turbidity.vals.push(calculateTurbidity(features, nonGraphables));
+  params.turbidity.vals = params.turbidity.vals.slice(-1*longWindow);
 
-
-
-function calculateClarity(){
-  // var spectralClarity;
-  //
-  var flatness = nonGraphables['spectralFlatness'].windowedValues;
-  var short = scaleSpectralFlatness(flatness.short.mean)
-  var long = scaleSpectralFlatness(flatness.long.mean)
-  var medium = scaleSpectralFlatness(flatness.medium.mean)
-
-  //
-
-  var centroid = nonGraphables['spectralCentroid'].windowedValues
-  var lowness = Math.sqrt((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3/(fftSize/2))
-
-  spectralClarity = (1-clip((long+short+medium)/3))*lowness
-
-
-  // var spectralClarity;
-  // var centroid = nonGraphables['spectralCentroid'].windowedValues;
-  // var rms = nonGraphables['rms'].windowedValues;
-  // spectralClarity = 1-clip(scaleSpectralTurbidity((centroid.long.stdDev/3+centroid.medium.stdDev/3+centroid.short.stdDev/3)/20),0,1);
-
-  var levelClarity;
-  var rms = nonGraphables['rms'].windowedValues
-  levelClarity = 1-clip(Math.sqrt((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.05));
-  var r = spectralClarity*0.7+levelClarity*0.3;
-  // var r = spectralClarity
-  params.clarity.vals.push(r)
+  params.clarity.vals.push(calculateClarity(features,nonGraphables))
   params.clarity.vals = params.clarity.vals.slice(-1*(longWindow));
-
 }
 
-function scaleSpectralFlatness(x){
-  return (1/(1+Math.pow(Math.E,(-10)*x+5)))
-}
 
-function scaleCentroidStrength(x){
-  return 1/(1+Math.pow(Math.E,(-10)*x+5))
-}
-
-// crudely mapped sigmoid...
-function scaleSpectralTurbidity(x){
-  return 1/(1+Math.pow(Math.E,-10*clip(x,0,1)+5))
-}
 
 
 
@@ -420,7 +324,6 @@ function standardDeviation(l){
 }
 
 function testDrawOnCanvas(){
-
   drawArrayOnCanvas(new Float32Array([0.1,0.2,0.3,0.4,1,0.5,0.6,0.7,0.8,0.9]), document.getElementById('loudness'))
 }
 
@@ -628,9 +531,6 @@ function startSine(){
   sine.start();
 }
 
-function stopSine(){
-  sine.stop();
-}
 
 function range(start, end) {
   return Array(end - start + 1).fill().map((_, idx) => start + idx)
