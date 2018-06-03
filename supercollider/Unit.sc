@@ -46,15 +46,17 @@ Unit {
 	}
 
 	play{
+		|out=0, amp=1|
 		{
 			var a = PlayBuf.ar(this.buffer.numChannels,bufnum:buffer,doneAction:2);
 			var env = EnvGen.ar(Env.new([0,1,1,0],[0.01,this.buffer.duration-0.02,0.01]));
-			a*env;
+			a = (0!(out))++[a]++(0!(Server.default.options.numOutputBusChannels-1-out));
+			Out.ar(~outBus,a*env*amp);
 		}.play;
 	}
 
 	*midiTest {
-		|corpusPath="c://Users/jamie/AppData/Local/SuperCollider/Extensions/supercollider-extensions/MRP/Units/high-level-features/testing.json"|
+		|corpusPath="c://Users/jamie/AppData/Local/SuperCollider/Extensions/supercollider-extensions/MRP/supercollider/Units/high-level-features/testing2.json",corpusID|
 
 		var units;
 		var pitch=0;
@@ -63,11 +65,16 @@ Unit {
 		var clarity = 0;
 		var spectralCentroid=0;
 		var rms=0;
+		var out =0;
+		var amp =1;
+
+		if(corpusID.isNil,{corpusID=corpusPath});
+
 		MIDIClient.init;
 		MIDIIn.connectAll;
 
 		Server.default.waitForBoot({
-			units = Unit.readUnitsFromJSON(corpusPath);
+			Unit.readUnitsFromJSON(corpusPath,corpusID);
 			MIDIdef.cc(\concatSynthTest,{
 				|val,nm|
 				switch(nm,
@@ -94,10 +101,10 @@ Unit {
 						rms=val/127;
 						("RMS: "+rms).postln;
 					},
-					7,{},
-					8,{}
+					7,{out = (val*Server.default.options.numOutputBusChannels/127).floor;out.postln;},
+					8,{amp = val/127}
 				);
-				Unit.findClosestUnit(Unit(pitch,turbidity,strength,clarity,spectralCentroid,rms),list:units).play;
+				Unit.findClosestUnit(Unit(pitch,turbidity,strength,clarity,spectralCentroid,rms),list:Unit.corpus[corpusID]).play(out, amp);
 				// [pitch,turbidity,strength,clarity,spectralCentroid,rms].postln;
 			});
 		});
@@ -124,22 +131,36 @@ Unit {
 	*readUnitsFromJSON{
 		|path, corpusIDKey|
 
-		var files = JSONFileReader.read(path);
-
-
+		var files;
 		var units = [];
-		// keys are paths to the soundfiles
-		files.keys.do{
-			|key,index|
-			var i = files[key];
-			var buffer = Buffer.read(Server.default,key);
-			units = units.add(Unit(pitch:i["pitch"].asFloat,turbidity:i["turbidity"].asFloat,strength:i["strength"].asFloat,clarity:i["clarity"].asFloat,spectralCentroid:i["spectralCentroid"].asFloat,rms:i["rms"].asFloat,path:key,buffer:buffer));
-		};
+		"Server must be booted for JSON file to be read".warn;
+		if(path.keep(-5)!= ".json",
+			{
+				Error.new("Path must resolve to a .json file").throw;
+		});
 		if(corpusIDKey.isNil,{
 			corpusIDKey = path;
 		});
-		Unit.addCorpus(corpusIDKey,units);
-		^units;
+		path.postln;
+		files = JSONFileReader.read(path);
+		// files = JSONFileReader.read(PathName(path).parentLevelPath(2)++PathName(path).fileName.drop(-5)++"\\";);
+		// keys are paths to the soundfiles
+		Routine{
+			Unit.corpus[corpusIDKey] = [];
+			files.keys.do{
+				|key,index|
+				var i = files[key];
+				var buffer = Buffer.read(Server.default,key,action:{
+
+					Unit.corpus[corpusIDKey] = Unit.corpus[corpusIDKey].add(Unit(pitch:i["pitch"].asFloat,turbidity:i["turbidity"].asFloat,strength:i["strength"].asFloat,clarity:i["clarity"].asFloat,spectralCentroid:i["spectralCentroid"].asFloat,rms:i["rms"].asFloat,path:key,buffer:buffer));
+					key.post;
+					" ".post;
+				});
+
+			};
+
+			"corpus loaded".postln;
+		}.play;
 	}
 
 	*addCorpus {

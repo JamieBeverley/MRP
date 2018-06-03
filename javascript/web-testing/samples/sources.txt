@@ -1,0 +1,12 @@
+wind.wav: https://freesound.org/people/Wesselorg/sounds/408442/
+wind2.wav: https://freesound.org/people/macdaddyno1/sounds/382591/
+
+rain.wav: https://freesound.org/people/lebaston100/sounds/243627/
+rain2.wav:  https://freesound.org/people/InspectorJ/sounds/401277/
+
+thunder.wav: https://freesound.org/people/FlatHill/sounds/237729/
+
+hail.wav: https://freesound.org/people/Kyster/sounds/168510/
+hail2.wav: https://freesound.org/people/ikayuka/sounds/240742/
+
+clear.wav: https://freesound.org/people/Krucifix1974/sounds/378007/

@@ -1,0 +1,118 @@
+html{
+
+}
+
+body{
+  font-family: Helvetica;
+  font-size: 28px;
+  /* color: rgb(0,0,0); */
+  background-color: rgb(231,255,251);
+  padding:2%;
+  /* width:100%; */
+}
+li{
+  margin:2%;
+}
+.instructionBlock{
+  background-color: rgb(255,255,255);
+  border-radius: 45px;
+  margin:5%;
+  padding:2%;
+}
+
+.settings{
+  margin:2%;
+  border-radius: 5px;
+  padding:1%;
+  background-color: white;
+  /* background-color: rgb(221,255,254); */
+  box-shadow: 3px 3px rgb(178,140, 119);
+}
+
+#settingsContainer{
+  /* background-color: rgb(255,235,224); */
+  background-color: rgb(137,178,177);
+  padding: 2%;
+  border-radius: 5px;
+}
+
+.visualizationsContainer{
+  padding:2%;  /* background-color: rgb(245,231,221); */
+  background-color: rgb(137,178,177);
+  border-radius: 5px;
+  margin-top:2%;
+}
+
+label{
+  float:left;
+}
+
+.canvasContainer{
+  position: relative;
+  height: 200px;
+}
+
+input {
+  background-color: rgb(246,255,255);
+  /* background-color: rgb(137,178,177); */
+  /* background-color: rgb(255,235,224); */
+
+
+  /* background-color: rgb(221,255,254); */
+  /* background-color: rgb(221,255,254); */
+  border-radius:5px;
+  height: 40px;
+	/* box-shadow: 2px 0px rgb(255,0,0); */
+  box-shadow: 1px 1px rgb(178,140, 119);
+
+}
+
+input[type=number]{
+  width:60px
+}
+
+span{
+  width:200px;
+  display:block;
+  float:left;
+  min-width:200px;
+}
+
+.visualization{
+  /* display: block; */
+  /* width:100%; */
+  /* position:relative; */
+  margin:2%;
+  background-color: rgb(255,255,255);
+  border-radius: 5px;
+  padding:1%;
+  height: 400px;
+  box-shadow: 4px 4px rgb(178,140, 119);
+}
+
+
+canvas {
+  border: 2pt solid;
+  position:absolute;
+  /* z-index: -1; */
+  z-index: 0;
+  width:99%;
+  height: 200px;
+  background-color: white;
+}
+
+.canvasMaxOverlay{
+  position:absolute;
+  z-index: :2;
+  border: 1pt solid black;
+  color: 'rgb(255,0,0)';
+  background-color: rgb(255,255,255);
+}
+
+.canvasMinOverlay{
+  position:absolute;
+  bottom:0px;
+  z-index: :2;
+  border: 1pt solid black;
+  background-color: rgb(255,255,255);
+}
