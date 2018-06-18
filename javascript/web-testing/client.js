@@ -21,7 +21,7 @@ var longWindow = 200;
 var mediumWindow = 50;
 var shortWindow = 10;
 
-windowedValues:emptyWindowedValues
+
 var emptyMeanStdDev = {mean:undefined,stdDev:undefined}
 var emptyWindowedValues = {long:emptyMeanStdDev,medium:emptyMeanStdDev,short:emptyMeanStdDev}
 
@@ -30,7 +30,7 @@ nonGraphables ={
   "loudnessTotal":{min:0,max:100,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},
   "rms":{min:0,max:1,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},                // loudness
 
-  "energy":{min:0,max:1,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},               // loudness again..
+  "energy":{min:0,max:40,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},               // loudness again..
   "zcr":{min:0,max:100,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},                // zero crossing, maybe useful as secondary analysis
   "spectralCentroid":{min:0,max:fftSize/2,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},     // definitely useful..  [0 to bin size/2] -> around max w/ whitenoise.
   "spectralFlatness":{min:0,max:1,minVal:undefined,maxVal:undefined,vals:[],windowedValues:emptyWindowedValues},       // 'noiseyness' in db

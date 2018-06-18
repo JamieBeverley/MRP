@@ -9,17 +9,12 @@
   <div id="settingsContainer">
 
     <div class="settings">
-      <input type="button" value="startMeyda" onclick="startMeyda()"></input>
-      <input type="button" value="stopMeyda" onclick="meydaAnalyzer.stop()"></input>
+      <input type="button" value="start" onclick="startMeyda()"></input>
+      <input type="button" value="stop" onclick="meydaAnalyzer.stop()"></input>
     </div>
-
     <div class="settings">
       Global Gain <input id="globalGain" onchange="updateGain()" type='number' value='0' step="any"></input>
     </div>
-    <!-- <div>
-      <input type="button" value="start audio context" onclick="start()"></input>
-      <input type="button" value="soundTest" onclick="soundTest()"></input>
-    </div> -->
     <div class="settings">
       Sine:
       freq<input type="number" value="440" id="sineFreq"></input>
@@ -56,6 +51,7 @@
       <input type="button" value="play wind2" onclick="playBuffer('samples/wind2.wav')"></input>
       <!-- <input type="button" value="play hail(doesn't wrk)" onclick="playBuffer('samples/hail.wav')"></input> -->
       <!-- <input type="button" value="play hail2(doesn't wrk)" onclick="playBuffer('samples/hail2.wav')"></input> -->
+      <input type="button" value="synth" onClick="playBuffer('samples/HIE_C_Synth_1.wav')"></input>
       <input id="loopCheckbox" type="checkbox" checked="true" value="loop"></input>
       <input type="button" value="stop" onclick="stopBuffers()"></input>
 

@@ -1,0 +1,11 @@
+canvas{
+  width:200px;
+  height:100px;
+  border: 1pt solid black
+}
+
+
+.title {
+  width:150px;
+  float:left;
+}
