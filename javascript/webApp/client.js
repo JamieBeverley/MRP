@@ -7,6 +7,7 @@ try{
 
 var ac=undefined;
 var globalGain
+var coordinates;
 var meydaAnalyzer
 var fftSize = 512;
 var sendCounter = 0;
@@ -50,6 +51,11 @@ function start(){
     globalGain.gain.value = 1;
     globalGain.connect(ac.destination)
     whitenoiseBuffer = ac.createBuffer(2, ac.sampleRate * 7 , ac.sampleRate);
+		coordinates = navigator.getCoordinates();
+
+		navigator.geolocation.getCurrentPosition(function(x){sendNewRemote(x,0)});
+
+
     for (var channel = 0; channel < whitenoiseBuffer.numberOfChannels; channel++) {
       var nowBuffering = whitenoiseBuffer.getChannelData(channel);
       for (var i = 0; i < whitenoiseBuffer.length; i++) {
@@ -153,4 +159,60 @@ function sendData(){
   }
   console.log(msg)
   sendCounter=0;
+}
+
+
+
+function sendNewRemote(pos, tries){
+	if(tries >=3){
+		alert("There was an error determining your location, please ensure location services are enabled or feel free to listen without sending sound features.")
+		return;
+	}
+	if (pos){
+		if(ws){
+			var msg = {
+				type: "newRemote",
+				coordinates: pos;
+			};
+			ws.send(JSON.stringify(msg))
+		} else{
+			console.log("WARNING ws not initialized, couldn't send new remtoe, trying again in 2 sec");
+			setTimeout(sendNewRemote(pos,tries+1), 2000);
+		}
+	} else {
+		console.log("WARNING coordinates could not be determined, trying to get coordinates again...");
+		navigator.geolocation.getCurrentPosition(function(x){sendNewRemote(x,tries+1)});
+	}
+}
+
+
+if (ws){
+  ws.addEventListener('message', function(message){
+    var msg;
+    try {
+      msg = JSON.parse(message)
+    } catch (e){
+      console.log("WARNING: could not parse ws JSON message")
+    }
+
+    if (msg.type == "params"){
+
+			// TODO - do something here
+
+    } else if (msg.type == "newRemote"){
+
+      var remote = new Remote(msg.uid, msg.coordinates)
+      audienceSource.addFeature(remote.feature);
+
+    } else if ("removeRemote"){
+      try {
+        audienceSource.removeFeature(Remote.remotes[msg.uid].feature);
+        Remote.remotes[msg.uid] = undefined
+      } catch (e){
+        console.log("WARNING: Error deleting remote <"+msg.uid+"> :" +e)
+      }
+    } else {
+        console.log("WARNING: WS message with unknown type <"+msg.type+"> received.")
+    }
+  })
 }

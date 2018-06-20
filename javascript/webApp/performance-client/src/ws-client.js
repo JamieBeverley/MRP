@@ -13,7 +13,6 @@ ws.addEventListener('message', function(message){
     console.log("WARNING: could not parse ws JSON message")
   }
 
-
   if (msg.type == "addRemote"){
     addRemote(msg.uid, msg.coordinates);
   } else if ("removeRemote"){

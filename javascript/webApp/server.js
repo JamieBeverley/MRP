@@ -23,17 +23,15 @@ var scOSC = new osc.UDPPort({
 })
 scOSC.open();
 
-var id =0;
+var uid =0;
 var numClients=0;
 var clients = {};
 wsServer.on('connection', function(r){
-  id++;
+  uid++;
   numClients++;
-  console.log("__________ Connection, ID:  "+id)
-  console.log("    "+(new Date()));
-  console.log("__________")
+  console.log("__ Connection, ID:  "+uid+"  time:"+(new Date()));
 
-  r.identifier = id;
+  r.uid = uid;
   r.performer = false;
   r.pitch = 0;
   r.clarity = 0;
@@ -41,59 +39,116 @@ wsServer.on('connection', function(r){
   r.strength = 0;
   r.spectralCentroid = 0;
   r.rms = 0;
-  clients[r.identifier] = r;
+	r.coordinates = [undefined,undefined];
+	r.consented = false;
+
+	// Tell the client who's connected
+	for (i in clients){
+		// TODO maybe handle this better so the participant is encouraged to reload their page when
+		// 			this fails
+
+		if (clients[i].consented){
+			try{
+				console.log('sending new remote: '+i);
+				var msg = {type:"newRemote",coordinates:clients[i].coordinates,uid:clients[i].uid};
+				r.send(JSON.stringify(msg))
+			} catch (e){
+				console.log("WARNING: error sending 'newRemote' to <"+r.uid+">")
+				console.log(e)
+			}
+		}
+	}
+
+	// important that clients dictionary is updated after the above
+	// so that this client isn't added twice
+	clients[r.uid] = r;
   r.on('message', (x)=>onMessage(x,r));
   r.on('error', (x)=>onError(x,r));
   r.on('close', (x)=>onClose(x,r));
 })
 
 function onError(err,r){
-  console.log("##### WS Error for client "+r.identifier);
+  console.log("##### WS Error for client "+r.uid);
   console.log(err)
 }
 
 function onClose(x,r){
   // TODO Note: things could go wrong here if in some other thread clients[r.idnetifier] is being accessed.. maybe need a lock on clients or something
-  console.log('Client left: '+r.identifier)
-  delete clients[r.identifier];
+  console.log('Client left: '+r.uid)
+  delete clients[r.uid];
 }
 
 
 function onMessage(message, r){
   var msg;
+
   try{
     msg = JSON.parse(message);
   } catch (e){
-    console.log("###### WARNING - error parsing JSON message from client: ");
+    console.log("WARNING - error parsing JSON message from client: ");
     console.log(e);
+		console.log("msg: "+msg)
     return;
   }
-  switch (msg.type){
-    case "authenticate":
-      authenticate(msg.password, r);
-      break;
 
-    case "values":
-      addValues(msg,r)
-      break;
-    default:
-      console.log("###### WARNING - uncrecognized ws message from client "+r.identifier+" with type: "+msg.type);
-      break;
-  }
+	if (msg.type == "consented"){
+		if (typeof(msg.coordinates[0])=='number' && typeof(msg.coordinates[1]) == "number"){
+			r.consented = true;
+			r.coordinates = msg.coordinates;
+			var newMsg = {type:"newRemote", uid:r.uid, coordinates: msg.coordinates};
+			wsServer.broadcast(JSON.stringify(newMsg));
+		} else{
+			console.log("WARNING invalid location coordinates received from <"+r.uid+">");
+		}
+	} else {
+		console.log("WARNING unrecognized msg type recevied: "+msg.type)
+	}
+
+  // switch (msg.type){
+	// 	case "newRemote":
+	//
+  //   case "authenticate":
+  //     authenticate(msg.password, r);
+  //     break;
+  //   case "values":
+  //     addValues(msg,r)
+  //     break;
+  //   default:
+  //     console.log("###### WARNING - uncrecognized ws message from client "+r.uid+" with type: "+msg.type);
+  //     break;
+  // }
 }
 
+
+
+
+
+wsServer.broadcast = function(msg){
+	var stringMsg = JSON.stringify(msg);
+	for(i in clients){
+		try{
+			clients[i].send(stringMsg);
+		}catch (e){
+			console.log("ERROR: could not send msg <"+msg.type+"> to client: <"+i+">");
+		}
+	}
+}
+
+
+
+
 function addValues(values, r){
-  clients[r.identifier].pitch = values.pitch;
-  clients[r.identifier].clarity = values.clarity;
-  clients[r.identifier].turbidity = values.turbidity;
-  clients[r.identifier].strength = values.strength;
-  clients[r.identifier].spectralCentroid = values.spectralCentroid;
-  clients[r.identifier].rms = values.rms;
+  clients[r.uid].pitch = values.pitch;
+  clients[r.uid].clarity = values.clarity;
+  clients[r.uid].turbidity = values.turbidity;
+  clients[r.uid].strength = values.strength;
+  clients[r.uid].spectralCentroid = values.spectralCentroid;
+  clients[r.uid].rms = values.rms;
 }
 
 function authenticate (pwd, r){
   if(msg.password == password){
-    clients[r.identifier].performer = true;
+    clients[r.uid].performer = true;
     console.log('____ Client '+r+" authenticated")
   } else{
     console.log('#### Unsuccessful authentication: '+msg.password);
