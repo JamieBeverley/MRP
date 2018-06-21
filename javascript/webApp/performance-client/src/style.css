@@ -23,8 +23,8 @@ ul{
 #cmdBox{
   width:10%;
   /* height: 20%; */
+  z-index: 2;
   padding:1%;
-  z-index: 0;
   background-color: rgb(100,100,100,0.5);
   position: absolute;
   top:5%;
