@@ -175,32 +175,6 @@ helmholsts
 
 
 
-
-
-
-
-
-
-
-- what is the corpus?
-  - natural recordings / soundscape composition mixed with (?) metallic and synthesized (heterogenous)
-  - voices?
-  - industrial or urban soundscapes?
-
-- what will be live coded? what is the performance?
-  - people connecting, their inherent presence
-  - spatialization - sending around room
-  - changing weighting of concatenative synthesis parameters
-  - amalgamating and deconstructing remote participant's data streams- averaging, differencing, scaling, etc...
-  - zooming in and out - start super zoomed in (can only see hamilton maybe to start)
-  - *swapping out of corpus under the feet of the performance?
-    - zils and patchet 2001 (musical mosaicing) - problem or difficulty of exploring enormous databases of samples
-    - imagine suddenly swapping to the dirt sample library at a live coding show?
-    - multiple perspectives on same input data
-    - synthesized database and soundscape recordings
-    - allows 'form' to emerge too - exploration of different
-
-
 - How are they indexed?
 - How are units stored? What database?
   - JSON if supported with SC would be easily transferred to client js
@@ -208,6 +182,18 @@ helmholsts
 - could you just map the distance of the input location to the things around it and find the sample closest to it?
   - define a search space around the target - check all things inside that search space for their proximity, and select the closest one?
   - if nothing exists in the search space maybe there's silence? or search space grows?
+
+
+
+
+Node 9 things:
+- 'sones' - perceptual loudness scale/unit
+- beakTrack.kr
+- mfcc - timbres - abstracting from loudness of the signal
+-
+
+
+
 
 
 
@@ -252,3 +238,78 @@ UNTIL the global cost is lower than a predefined threshold, or
 the maximum number of iterations is reached. The final musaic is
 the best sequence of all these attempts, i.e. the sequence that has
 the lowest final global cost.
+
+
+
+
+
+
+- what is the corpus?
+  - natural recordings / soundscape composition mixed with (?) metallic and synthesized (heterogenous)
+  - voices?
+  - industrial or urban soundscapes?
+
+- what will be live coded? what is the performance?
+  - people connecting, their inherent presence
+  - spatialization - sending around room
+  - changing weighting of concatenative synthesis parameters
+  - amalgamating and deconstructing remote participant's data streams- averaging, differencing, scaling, etc...
+  - zooming in and out - start super zoomed in (can only see hamilton maybe to start)
+  - *swapping out of corpus under the feet of the performance?
+    - zils and patchet 2001 (musical mosaicing) - problem or difficulty of exploring enormous databases of samples
+    - imagine suddenly swapping to the dirt sample library at a live coding show?
+    - multiple perspectives on same input data
+    - synthesized database and soundscape recordings
+    - allows 'form' to emerge too - exploration of different
+
+
+
+
+
+
+- maps api
+- class for each 'person'/connected member
+- right click context menus
+- class for speaker objects (?)
+- interactions?
+- 'slow' or 'delay' a stream
+
+
+
+
+
+
+
+// UHG
+// for (var i =1; i<=numOutputChannels; i++){
+//   var x, y;
+//   if (numOutputChannels%4 == 0){
+//     if (i/numOutputChannels<=0.25){
+//       x = i/(1+numOutputChannels/4);
+//       y = 1;
+//     } else if (i/numOutputChannels<=0.5) {
+//       x = 1;
+//       y = Math.abs((1-i)%4)/(1+numOutputChannels/4)
+//       // y = 1-(Math.abs((i)%4)/(1+numOutputChannels/4))
+//       console.log("right wall: x: "+x+" y: "+ y)
+//     } else if (i/numOutputChannels<=0.75){
+//       x = 1-((i%4)/(1+numOutputChannels/4))
+//       y = 0;
+//     } else {
+//       x = 0;
+//       y = (Math.abs((1-i)%(numOutputChannels/4))+1)/(1+numOutputChannels/4)
+//       console.log("left wall: x: "+x+" y: "+ y)
+//     }
+//   } else {
+//     console.log("only configured for outchannels that are multiples of 4")
+//   }
+//
+//   speakerCoordinateRatios.push([x,y])
+//   var extent = map.getView().calculateExtent();
+//   var coord = [(extent[2]-extent[0])*x+extent[0], (extent[3]-extent[1])*y+extent[1]];
+//
+//   var speaker = new Feature({geometry:new Point (coord)});
+//   speaker.setStyle(new Style({image: new Icon({src: 'speaker.png', scale:0.05})}));
+//   audienceSource.addFeature(speaker);
+//   speakers.push(speaker);
+// }
