@@ -2,18 +2,15 @@ import Map from 'ol/map';
 import View from 'ol/view';
 import TileLayer from 'ol/layer/tile';
 import OL from "ol"
-import XYZ from 'ol/source/xyz';
 import OSM from 'ol/source/osm'
 import Draw from 'ol/interaction/draw'
 import VectorSource from 'ol/source/vector'
 import VectorLayer from 'ol/layer/vector'
 import Circle from 'ol/geom/circle'
+import LineString from 'ol/geom/linestring'
 import Feature from 'ol/feature'
-import Point from 'ol/geom/point'
 import Proj from 'ol/proj' // fromLonLat
 import Style from 'ol/style/style' // for resizing
-import CircleStyle from 'ol/style/circle'
-import Icon from 'ol/style/icon'
 import Select from 'ol/interaction/select'
 import DragBox from 'ol/interaction/dragbox'
 import Condition from 'ol/events/condition'
@@ -25,14 +22,20 @@ import Modify from 'ol/interaction/modify'
 // ol.interaction.defaults(opt_options)
 import Remote from './Remote.js'
 import Speaker from './Speaker.js'
-import Random from './Random.js'
-// if you ever need to recreate meyda.js, remember to add var before the cosMap declaration.
-// (clone meyda, build it and look in /dist/web for meyda.js)
-import Meyda from "./meyda.js"
+import Computation from './Computation.js'
+// NOTE - if you're getting an error like 'cosMap' undefined
+//       you need to change the src of one of meyda's depends:
+//       node_modules/dct/src/dct.js line:10, add 'var' before cosMap;
+import Meyda from "meyda"
 
 
-var audienceSource = new VectorSource({wrapX: true});
+// del
+import Point from 'ol/geom/point'
+import Icon from 'ol/style/icon'
+
+var audienceSource = new VectorSource({wrapX: false});
 var audienceLayer = new VectorLayer ({source:audienceSource});
+
 
 var map = new Map({
   target: 'map',
@@ -43,13 +46,11 @@ var map = new Map({
   view: new View({
     center: Proj.fromLonLat([0,0]),
     zoom: 2,
-    minResolution: 40075016.68557849 / 256 / Math.pow(2,7)
+    minResolution: 40075016.68557849 / 256 / Math.pow(2,7),
+    maxResolution: 40075016.68557849 / 256 / 4
   }),
   interactions: Interaction.defaults({shiftDragZoom:false})
 });
-
-
-
 
 
 
@@ -62,34 +63,65 @@ for (var i in speakerCoordinateRatios){
 positionSpeakers()
 
 // a normal select interaction to handle click
-var select = new Select();
-var selectedFeatures = select.getFeatures();
+var select = new Select({
+  wrapX:false,
+  condition:function (e){
+    return (Condition.shiftKeyOnly(e) && Condition.singleClick(e))
+  }
+});
+// var selectedFeatures = select.getFeatures();
 
 var dragBox = new DragBox({condition: Condition.platformModifierKeyOnly});
 dragBox.on('boxend', function() {
   // features that intersect the box are added to the collection
   // selected features
   var extent = dragBox.getGeometry().getExtent();
-  console.log("boxended")
-  console.log(extent);
   audienceSource.forEachFeatureIntersectingExtent(extent, function(feature) {
-    selectedFeatures.push(feature);
-    console.log('intersecting feature found: '+feature);
+    // selectedFeatures.push(feature);
+    select.getFeatures().push(feature);
   });
 });
 
 // clear selection when drawing a new box and when clicking on the map
 dragBox.on('boxstart', function() {
-  selectedFeatures.clear();
+  select.getFeatures().clear();
+  if (drawStart){
+    connectionDraw.finishDrawing();
+  };
+  // selectedFeatures.clear();
 });
 
 
 var cmdBox = document.getElementById('cmdBox');
 
-// selectedFeatures.on(['add', 'remove'], function() {
-  // var remotes = selectedFeatures.getArray().map(function(feature) {
-  //   return Remote.remotes[feature.uid];
-  // });
+select.getFeatures().on(['add', 'remove'], function() {
+  console.log("features added/removed");
+  // console.log(selectedFeatures.getArray())
+  console.log("selected feats: ");
+  console.log(select.getFeatures().getArray()[0]);
+
+  var innerHTML = select.getFeatures().getArray().filter(function(x){
+    console.log(x.type);
+    return ["remote","computation"].includes(x.type)}).map(function(feature){
+      var r;
+      r = feature.getInfoHTML();
+      console.log("adding html:"+r)
+      return r?r:document.createElement("div");
+    }
+  );
+
+  if (innerHTML.length>0){
+    cmdBox.hidden = false;
+    cmdBox.innerHTML = "";
+    for(var i in innerHTML){
+      cmdBox.appendChild(innerHTML[i])
+    }
+  } else {
+    console.log("no remote or computation elements")
+    cmdBox.hidden = true;
+    cmdBox.innerHTML = ""
+  }
+
   // if (remotes.length > 0) {
   //   var cmdBoxInnerHTML=""
   //   for(var i in remotes){
@@ -107,7 +139,7 @@ var cmdBox = document.getElementById('cmdBox');
   // } else {
   //   cmdBox.hidden = true;
   // }
-// });
+});
 
 
 map.addInteraction(dragBox);
@@ -123,37 +155,81 @@ map.addInteraction(select);
 // map.addInteraction(modify);
 
 function onConnectable(coordinate){
+  var features = audienceSource.getFeatures().map(function(f){return f.type})
+  console.log("features: "+features)
+
+
+
   var a = audienceSource.getFeaturesAtCoordinate(coordinate)
-  console.log("array:"+a);
-  console.log("okay...")
-  return a.length>0?true:false;
+  var isOnConnectable = a.length>0;
+  console.log("clicked on connectable: "+isOnConnectable);
+  return isOnConnectable;
 }
 
 var connectionDraw = new Draw({
   type:"LineString",
-  condition: function(browserEvent){console.log(browserEvent); return onConnectable(browserEvent.coordinate)},
-  wrapX:true,
+  condition: function(browserEvent){
+    console.log("___________________")
+    console.log(browserEvent.coordinate);
+    var shift = Condition.shiftKeyOnly(browserEvent);
+    console.log("shift: "+shift);
+    var ctrl = Condition.platformModifierKeyOnly(browserEvent);
+    return !ctrl && !shift && onConnectable(browserEvent.coordinate)},
+  wrapX: false,
+  freehandCondition: function(x){return false},
+  freehand:false,
   maxPoints:2
 });
 
-var currentSelected;
-connectionDraw.on('drawstart', function(e){
-  currentSelected = selectedFeatures.getArray();
+var from;
+var drawStart = false;
+connectionDraw.on('drawstart', function(ev){
+  drawStart = true;
+  console.log('drawstart...')
+  var coord = ev.target.sketchCoords_[1];
+  var atCoord = audienceSource.getFeaturesAtCoordinate(coord);
+  console.log(atCoord)
+  if(atCoord){
+    from = atCoord[0];
+  } else {
+    console.log("this condition should not have been activated, find this print message plz...")
+    // if nothing was found where the click happened, drawstart shouldn't have occurred
+    // (see connectionDraw's 'condition' function)
+    from = undefined;
+    connectionDraw.finishDrawing();
+  }
+
+  // TODO - multiple selection and connection?
+  // currentSelected = selectedFeatures.getArray();
+  // if(currentSelected.length<1){
+  //   connectionDraw.finishDrawing();
+  // }
 })
 
 connectionDraw.on('drawend',function(ev){
-  console.log(ev.target.sketchCoords_);
+  drawStart = false;
+  var lineFeature = ev.feature;
   var finalCoord = ev.target.sketchCoords_[1];
-  var destination = audienceSource.getFeaturesAtCoordinate(finalCoord);
-  console.log(destination.type)
-  if(destination){
-    destination = destination[0];
+  var to = audienceSource.getFeaturesAtCoordinate(finalCoord);
+  if(to){
+    to = to[0];
+    console.log("found to: "+to);
   } else {
+    console.log('No feature at destination');
     return;
   }
+  console.log("from in draw end: "+from)
+  if(from){
+    var success = from.connect(to);
 
-  if(destination)
-  console.log(selectedFeatures.getArray())
+    if(!success){
+      console.log("...")
+    }
+
+  } else {
+    console.log("this condition shouldn't have been reached ...")
+  }
+  from = undefined;
 })
 // var connectionDraw = new Draw({type:"LineString", freehand:false,wrapX:true})
 
@@ -166,19 +242,96 @@ map.addInteraction(connectionDraw);
 
 
 
-map.getView().on('change:resolution', resizeRemotes);
+map.getView().on('change:resolution', resizeObjects);
 // Find smoother way of doing this
 map.getView().on('change',positionSpeakers);
 
-function resizeRemotes(){
-  var zoom = map.getView().getZoom();
-  var radius = 2e5/zoom;
-  for (var i in Remote.remotes){
-    var remote = Remote.remotes[i]
-    var coords = remote.getGeometry().getCenter();
-    remote.setGeometry(new Circle(coords, radius))
+
+function resizeObjects (){
+  console.log("hmm...");
+  resizeRemotes();
+  resizeComputations();
+}
+
+function resizeComputations(){
+  var resolution = map.getView().getResolution();
+  var radius = 15*resolution;
+  for (var i in Computation.computations){
+    Computation.computations[i].setRadius(radius);
   }
 }
+
+function resizeRemotes(){
+  var resolution = map.getView().getResolution();
+  var radius = 15*resolution;
+  for (var i in Remote.remotes){
+    Remote.remotes[i].getGeometry().setRadius(radius);
+  }
+}
+
+function positionSpeakers(){
+  var extent = map.getView().calculateExtent();
+  var resolution = map.getView().getResolution();
+  var radius = 40*resolution;
+  console.log('reposition')
+  for (var i in Speaker.eightChannelSpeakerCoordinateRatios){
+    var x = speakerCoordinateRatios[i][0];
+    var y = speakerCoordinateRatios[i][1];
+    var coord = [(extent[2]-extent[0])*x+extent[0], (extent[3]-extent[1])*y+extent[1]];
+    // TODO - put these two into a speaker or Connectable method.
+    Speaker.speakers[i].coordinate = coord;
+    Speaker.speakers[i].getGeometry().setCenterAndRadius(coord, radius);
+
+    for (var j in Speaker.speakers[i].connections){
+      Speaker.speakers[i].connections[j].redraw();
+    }
+
+  }
+}
+
+
+
+map.getViewport().addEventListener('contextmenu', function (evt) {
+  evt.preventDefault();
+  var coordinate = map.getEventCoordinate(evt);
+  var resolution = map.getView().getResolution();
+  console.log(coordinate)
+  var radius = 15*resolution;
+  new Computation(coordinate, audienceSource, radius)
+})
+
+
+
+// global key mappings (hopefully these don't overwrite anything...)
+var closureKeyUp = document.onkeyup;
+document.onkeyup = function(e) {
+  // JIC something in openlayers sets something to document onkeyup
+  if(closureKeyUp){
+    closureKeyUp(e)
+  }
+  // esc key
+  if (e.key.toLowerCase() == "escape") { // escape key maps to keycode `27`
+    select.getFeatures().clear();
+    if(drawStart){
+      connectionDraw.finishDrawing()
+    };
+  } else if (e.key.toLowerCase() =="delete"){
+    var deletes = select.getFeatures().getArray();
+    // var deletes = selectedFeatures.getArray();
+    var deletedConnections = []
+    for (var i in deletes){
+      if (deletes[i].type =="computation"){
+        deletedConnections = deletedConnections.concat(deletes[i].connections);
+        deletes[i].delete();
+        // select.getFeatures().remove(deletes[i]);
+      } else if (deletes[i].type =="connection" && !deletedConnections.includes(deletes[i])){
+        deletes[i].delete();
+      }
+    }
+    select.getFeatures().clear();
+  }
+}
+
 
 
 // Tool modifier widget div on bottom left
@@ -227,7 +380,8 @@ if (ws){
   // TODO - add location scrambling and UI to ask for permission/
   //        suggest alternative ways to participate
   navigator.geolocation.getCurrentPosition(function(pos){
-    var coordinates = [pos.coords.latitude, pos.coords.longitude];
+    // longitude first aligning with openlayers' conventions
+    var coordinates = [pos.coords.longitude, pos.coords.latitude];
     var msg = {type:"consented", coordinates:coordinates};
     ws.send(JSON.stringify(msg))
   });
@@ -252,7 +406,7 @@ if (ws){
 
     } else if (msg.type == "newRemote"){
       console.log('new remote: '+msg.uid)
-      var remote = new Remote(msg.uid, msg.coordinates, audienceSource);
+      var remote = new Remote(msg.uid, Proj.fromLonLat(msg.coordinates), audienceSource);
     } else if (msg.type == "removeRemote"){
       try {
         console.log('remove remote')
@@ -271,15 +425,6 @@ if (ws){
 
 
 
-function positionSpeakers(){
-  var extent = map.getView().calculateExtent();
-  for (var i in Speaker.eightChannelSpeakerCoordinateRatios){
-    var x = speakerCoordinateRatios[i][0];
-    var y = speakerCoordinateRatios[i][1];
-    var coord = [(extent[2]-extent[0])*x+extent[0], (extent[3]-extent[1])*y+extent[1]];
-    Speaker.speakers[i].setGeometry(new Point(coord));
-  }
-}
 
 
 

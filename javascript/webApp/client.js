@@ -82,6 +82,7 @@ function start(){
 }
 
 function analyze(data){
+	everyXPrintY(20,data);
   sendCounter++;
   for(i in features){
     if (i =="loudness"){
@@ -172,7 +173,7 @@ function sendNewRemote(pos, tries){
 		if(ws){
 			var msg = {
 				type: "newRemote",
-				coordinates: pos;
+				coordinates: pos,
 			};
 			ws.send(JSON.stringify(msg))
 		} else{

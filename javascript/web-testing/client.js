@@ -241,6 +241,7 @@ function roundTo(x,n){
 }
 
 function analyze (f){
+  everyXPrintY(20,f);
   features = f
 
   for (i in nonGraphables){
