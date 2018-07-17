@@ -24,14 +24,25 @@ var Computation = function (coordinate, source, initialRadius, computation){
   var geom = new Polygon (vertices)
   var featureOpts = {geometry: geom}
   Connectable.call(this,"computation", coordinate, source, featureOpts, 1)
-  this.source.addFeature(this)
+  this.source.addFeature(this);
 
   Computation.computations = Computation.computations?Computation.computations:[];
   Computation.computations.push(this);
 }
 
+
 Computation.prototype = Object.create(Connectable.prototype,{constructor: Computation});
 
+// Pseudo event system - this will be called anytime this.computation is changed by
+// 'setComputation'
+Computation.prototype.onComputationChange = function(){
+  console.log("changed:  "+this.toString());
+}
+
+Computation.prototype.setComputation = function (computation){
+  this.computation = computation;
+  this.onComputationChange();
+}
 
 Computation.prototype.setRadius = function (radius){
   this.radius = radius
@@ -42,7 +53,6 @@ Computation.prototype.setRadius = function (radius){
     [this.coordinate[0]-radiusXYdist, this.coordinate[1]-radiusXYdist],
     [this.coordinate[0], this.coordinate[1]+radiusXYdist]
   ]];
-  console.log("radius set")
   this.getGeometry().setCoordinates(vertices);
 }
 
@@ -76,11 +86,8 @@ Computation.prototype.getInfoHTML = function (){
   var closure = this;
   functionDropDown.onchange =  function(ev){
     var val = functionDropDown.options[functionDropDown.selectedIndex].value;
-    console.log("dd val: "+val)
     closure.computation = Computation.getEmptyComputationObj(val);
-    console.log("closure.computation: "+closure.computation.type)
     var html = closure.getComputationSpecHTML();
-    console.log(html)
     // var html = cl
     computationSpecificHTML.innerHTML = ""
     computationSpecificHTML.appendChild(html)
@@ -88,7 +95,6 @@ Computation.prototype.getInfoHTML = function (){
   }
 
   txt.addEventListener("click", function(ev){
-    console.log("clicked")
     content.style.display = content.style.display=="block"?"none":"block"
   });
 
@@ -96,36 +102,38 @@ Computation.prototype.getInfoHTML = function (){
 }
 
 Computation.prototype.getComputationSpecHTML = function(){
-  console.log("building html...")
-  console.log("computation type:  "+this.computation.type);
-  if(this.computation.value){console.log("computation value: "+ this.computation.value.toString())};
   var container = document.createElement("div");
-  console.log("type: "+this.computation.type)
   if (this.computation.type == "reweight"){
     var txt = document.createTextNode("Weights: ")
     var initialVal = this.computation.value instanceof Params?this.computation.value:new Params(1,1,1,1,1,1);
-    this.computation.value = initialVal;
+    // Bubble up event
+    var closure = this
+    initialVal.onParamsChange = function(){
+      closure.onComputationChange();
+    }
+    this.setComputation({type:this.computation.type,value:initialVal})
     var html = this.computation.value.getSetterHTML();
-    console.log("???");
     container.appendChild(txt);
     container.appendChild(html);
   } else if (this.computation.type =="sample and hold"){
     var txt = document.createTextNode("Grains: ")
     var initialVal = this.computation.value?this.computation.value:1;
-    var numInput = this.createNumInput("sample and hold", 1, 1, Infinity, initialVal);
+    this.setComputation({type:this.computation.type, value: initialVal});
+    var numInput = this.createNumInput(this.computation.type, 1, 1, Infinity, initialVal);
     container.appendChild(txt);
     container.appendChild(numInput);
   } else if (this.computation.type == "grain randomness"){
     var txt = document.createTextNode("randomness: ")
     var initialVal = this.computation.value?this.computation.value:0;
-    var numInput = this.createNumInput("sample and hold", 0.01, 0, 1, initialVal);
+    this.setComputation({type:this.computation.type, value: initialVal});
+    var numInput = this.createNumInput(this.computation.type, 0.01, 0, 1, initialVal);
     container.appendChild(txt);
     container.appendChild(numInput);
   } else if (this.computation.type == "corpus"){
     var dd = document.createElement('select');
     var initialIndex = SCState.corpuses.indexOf(this.computation.value);
+    initialIndex = initialIndex==(-1)?0:initialIndex;
     for (var i in SCState.corpuses){
-      console.log(SCState.corpuses[i]);
       const option = document.createElement('option');
       option.value = SCState.corpuses[i];
       option.innerHTML = SCState.corpuses[i];
@@ -133,10 +141,14 @@ Computation.prototype.getComputationSpecHTML = function(){
       // if(i==initialIndex){option.selected=true;}
       dd.appendChild(option);
     }
+    // if it just switched to 'corpus' type, make sure event is fired
+    this.setComputation({type:this.computation.type, value:SCState.corpuses[initialIndex]});
     var closure = this;
     dd.onchange = function(){
       var val = dd.options[dd.selectedIndex].value;
-      closure.computation.value = val;
+      console.log(closure.setComputation);
+      // whenever dd changes, pseudo event fires;
+      closure.setComputation({type:"corpus",value:val})
     }
     container.appendChild(dd)
   }
@@ -157,7 +169,8 @@ Computation.prototype.createNumInput = function(computationType, stepsize, min, 
   var closure = this;
   numInput.onchange = function (){
     var val = numInput.value;
-    closure.computation.value = val;
+    // closure.computation.value = val;
+    closure.setComputation({type:computationType, value:val})
     // closure.computation[computationType].value = val;
   }
   return numInput
@@ -167,6 +180,8 @@ Computation.getEmptyComputationObj = function(type){
   var r = {type:type}
   if (type == "reweight"){
     r.value = new Params(1,1,1,1,1,1);
+    // Bubble up change events
+    r.value.onParamsChange = function(){this.onComputationChange();}
   } else if (type =="sample and hold"){
     r.value = 0;
   } else if (type == "grain randomness"){
@@ -176,7 +191,27 @@ Computation.getEmptyComputationObj = function(type){
   } else{
     r = {type:"undefined"}
   }
-  console.log("get empty: "+r.type)
+  return r;
+}
+
+Computation.prototype.getGraphData = function (){
+  var r = {
+    type: this.type,
+    uid: this.uid,
+    value: this.getComputationGraphData(),
+  }
+  return r
+}
+
+Computation.prototype.getComputationGraphData = function(){
+  var r = {type:this.computation.type}
+  if (this.computation.type == "reweight"){
+    r.value = this.computation.value.getParams();
+  } else {
+    // maybe a bit awkward, but by keeping this an object, a computation's graph data is of consistent format
+    // (meaning in other places you don't have to treat 'reweight' differently from other computations)
+    r.value = {"value": this.computation.value}
+  }
   return r;
 }
 

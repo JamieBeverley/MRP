@@ -15,12 +15,19 @@ var Remote = function (uid, coordinate, source){
     name: this.uid
   }
 
-  Connectable.call(this, "remote", coordinate, source, featureOpts);
+  Connectable.call(this, "remote", coordinate,  source, featureOpts);
   this.source.addFeature(this)
 
   this.subscribed = false;
   this.params = new Params(); // null constructor bc. not subscribed
-
+  var closure = this;
+  var f = this.params.onParamsChange;
+  this.params.onParamsChange = function (){
+    // Call whatever params would regularly have called
+    f();
+    // call the remote's onchange func
+    closure.onRemoteChange();
+  }
   Remote.remotes = Remote.remotes?Remote.remotes:{};
   Remote.remotes[this.uid] = this
 };
@@ -28,7 +35,23 @@ var Remote = function (uid, coordinate, source){
 // Inherit functions other than constructor from connectable
 Remote.prototype = Object.create(Connectable.prototype,{constructor: Remote});
 
+//Overwrite inherited delete func (... that delete func should probably just be dispoed of)
+Remote.prototype.delete = function (){
+  delete Remote.remotes[this.uid]
+  this.disconnectAll();
+  this.source.removeFeature(this);
+  delete this;
+}
 
+Remote.prototype.setParams = function (params){
+  this.params.setParams(params);
+  // NOTE: Remote.prototype.onRemoteChange is not called here because it already gets called
+  //       by this.params.onParamsChange (see constructor above)
+};
+
+Remote.prototype.onRemoteChange= function(){
+  console.log("changed: "+this.toString());
+}
 
 Remote.prototype.subscribe = function(){this.subscribe = true};
 Remote.prototype.getInfoHTML = function (){
@@ -61,6 +84,17 @@ Remote.prototype.getInfoHTML = function (){
     return container;
 }
 
+// Returns a JSON object that contains essential info for constructing audio synthesis graph
+// (ie. it discards of all the info that isn't needed to construct the audio so that we're not sending
+//  ws messages that are larger than they should be)
+Remote.prototype.getGraphData = function (){
+  var r = {
+    uid: this.uid,
+    type: this.type,
+    value: this.params.getParams()
+  }
+  return r;
+}
 
 Remote.remotes = {}
 

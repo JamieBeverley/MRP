@@ -15,13 +15,13 @@ server.listen(8000, function(){console.log("listening")})
 
 var wsServer = new WebSocket.Server({server: server});
 
-var scOSC = new osc.UDPPort({
-	localAddress: "0.0.0.0",
-	localPort: 9000,
-	remoteAddress: "127.0.0.1",
-	remotePort: 9001
-})
-scOSC.open();
+// var scOSC = new osc.UDPPort({
+// 	localAddress: "0.0.0.0",
+// 	localPort: 9000,
+// 	remoteAddress: "127.0.0.1",
+// 	remotePort: 9001
+// })
+// scOSC.open();
 
 var uid =0;
 var numClients=0;
@@ -39,9 +39,11 @@ wsServer.on('connection', function(r){
   r.strength = 0;
   r.spectralCentroid = 0;
   r.rms = 0;
+	r.subscriptions = [];
 	r.coordinates = [undefined,undefined];
 	r.consented = false;
 
+	console.log('sending existing remotes to new client: ');
 	// Tell the client who's connected
 	for (i in clients){
 		// TODO maybe handle this better so the participant is encouraged to reload their page when
@@ -49,7 +51,7 @@ wsServer.on('connection', function(r){
 
 		if (clients[i].consented){
 			try{
-				console.log('sending new remote: '+i);
+
 				var msg = {type:"newRemote",coordinates:clients[i].coordinates,uid:clients[i].uid};
 				r.send(JSON.stringify(msg))
 			} catch (e){
@@ -75,6 +77,15 @@ function onError(err,r){
 function onClose(x,r){
   // TODO Note: things could go wrong here if in some other thread clients[r.idnetifier] is being accessed.. maybe need a lock on clients or something
   console.log('Client left: '+r.uid)
+	for(var i in clients){
+		var index = clients[i].subscriptions.indexOf(r.uid)
+		if (index > -1){
+			clients[i].subscriptions.splice(index,1);
+		}
+	}
+	if(r.consented){
+		wsServer.broadcast({type:"removeRemote",uid:r.uid});
+	}
   delete clients[r.uid];
 }
 
@@ -90,52 +101,87 @@ function onMessage(message, r){
 		console.log("msg: "+msg)
     return;
   }
-
-	if (msg.type == "consented"){
+	if (msg.type == "params"){
+		addValues(msg,r);
+	} else if (msg.type == "consented"){
 		if (typeof(msg.coordinates[0])=='number' && typeof(msg.coordinates[1]) == "number"){
+			console.log("consent received from: "+r.uid);
 			r.consented = true;
 			r.coordinates = msg.coordinates;
 			var newMsg = {type:"newRemote", uid:r.uid, coordinates: msg.coordinates};
 			wsServer.broadcast(JSON.stringify(newMsg));
 		} else{
-			console.log("WARNING invalid location coordinates received from <"+r.uid+">");
+			console.log("WARNING invalid location coordinates received from <"+r.uid+"> on consent");
 		}
+	} else if (msg.type == "subscribe"){
+		r.subscriptions.push(msg.uid);
+	} else if (msg.type == "unsubscribe"){
+		var index = r.subscriptions.indexOf(msg.uid);
+		if (index > -1) {
+			r.subscriptions.splice(index, 1);
+		}
+	}else if (msg.type =="unconsented"){
+		r.consented = false;
+		var newMsg = {type:"removeRemote",uid:r.uid};
+		wsServer.broadcast(JSON.stringify(newMsg))
 	} else {
 		console.log("WARNING unrecognized msg type recevied: "+msg.type)
 	}
-
-  // switch (msg.type){
-	// 	case "newRemote":
-	//
-  //   case "authenticate":
-  //     authenticate(msg.password, r);
-  //     break;
-  //   case "values":
-  //     addValues(msg,r)
-  //     break;
-  //   default:
-  //     console.log("###### WARNING - uncrecognized ws message from client "+r.uid+" with type: "+msg.type);
-  //     break;
-  // }
 }
 
 
+setInterval(function(){
+	for (var i in clients){
+		for (var j in clients[i].subscriptions){
+			var val = getParams(clients[clients[i].subscriptions[j]]);
+			var msg = {
+				type:"params",
+				value: val
+			}
+			send(clients[i],msg);
+		}
+	}
+},210)
 
-
+function send(c, msg){
+	try{
+		c.send(JSON.stringify(msg))
+	} catch (e){
+		console.log("!!!ERROR: could not send: "+msg.type)
+		console.log(e)
+	}
+}
 
 wsServer.broadcast = function(msg){
+	var uid = msg.uid;
 	var stringMsg = JSON.stringify(msg);
 	for(i in clients){
-		try{
-			clients[i].send(stringMsg);
-		}catch (e){
-			console.log("ERROR: could not send msg <"+msg.type+"> to client: <"+i+">");
+		if(clients[i].uid != uid){
+			try{
+				console.log("sending "+msg.type+" to client: "+clients[i].uid)
+				clients[i].send(stringMsg);
+			}catch (e){
+				console.log("!!!!!!!ERROR: could not send msg <"+msg.type+"> to client: <"+i+">");
+				console.log(e);
+			}
 		}
 	}
 }
 
 
 
+function getParams(c){
+	var obj = {
+		uid: c.uid,
+		pitch: c.pitch,
+		clarity: c.clarity,
+		turbidity: c.turbidity,
+		strength: c.strength,
+	  spectralCentroid: c.spectralCentroid,
+	  rms: c.rms
+	}
+	return obj
+}
 
 function addValues(values, r){
   clients[r.uid].pitch = values.pitch;
@@ -154,34 +200,6 @@ function authenticate (pwd, r){
     console.log('#### Unsuccessful authentication: '+msg.password);
   }
 }
-
-
-
-
-setInterval(function(){
-  var pitch= [];
-  var turbidity= [];
-  var clarity= [];
-  var strength= [];
-  var spectralCentroid = [];
-  var rms= [];
-
-  for(i in clients){
-    pitch.push(clients[i].pitch?clients[i].pitch:0);
-    turbidity.push(clients[i].turbidity?clients[i].turbidity:0);
-    clarity.push(clients[i].clarity?clients[i].clarity:0);
-    strength.push(clients[i].strength?clients[i].strength:0);
-    spectralCentroid.push(clients[i].spectralCentroid?clients[i].spectralCentroid:0);
-    rms.push(clients[i].rms?clients[i].rms:0);
-  }
-  var oscMsg = {
-    address: "/target",
-    args:[mean(pitch),mean(turbidity),mean(strength),mean(clarity),mean(spectralCentroid),mean(rms)]
-  }
-
-  scOSC.send(oscMsg)
-
-},200)
 
 function mean(arr){
   var r = 0;

@@ -29,3 +29,7 @@ June 26:
  - what things do supercollider need to tell the browser?
    - available corpuses
  - make remote client (lol)
+
+
+- Connection.connections tells SC of the shape/state of connections
+- individual Connectables report their changing values differently with reference to their uid and type

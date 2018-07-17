@@ -23,6 +23,9 @@ import Modify from 'ol/interaction/modify'
 import Remote from './Remote.js'
 import Speaker from './Speaker.js'
 import Computation from './Computation.js'
+import Connection from './Connection.js'
+
+import SCClientWS from './web-socket/SCClientWS.js'
 // NOTE - if you're getting an error like 'cosMap' undefined
 //       you need to change the src of one of meyda's depends:
 //       node_modules/dct/src/dct.js line:10, add 'var' before cosMap;
@@ -32,6 +35,11 @@ import Meyda from "meyda"
 // del
 import Point from 'ol/geom/point'
 import Icon from 'ol/style/icon'
+
+
+// @ damn
+SCClientWS.initSCClientWS();
+
 
 var audienceSource = new VectorSource({wrapX: false});
 var audienceLayer = new VectorLayer ({source:audienceSource});
@@ -60,7 +68,25 @@ for (var i in speakerCoordinateRatios){
   new Speaker([0,0],audienceSource)
 }
 
+
+
+
 positionSpeakers()
+
+Connection.connections.on(['add','remove'],function(){
+  var dag = Connection.getConnectionsDAG(); // [[from, to]] where from and to are from 'getGraphData'
+  var msg = {
+    type: "updateConnections",
+    value: dag
+  };
+  try {
+    SCClientWS.ws.send(JSON.stringify(msg));
+  } catch (e){
+    console.log("WARNING: could not send updateConnections message to SCClient: "+e)
+  }
+})
+
+
 
 // a normal select interaction to handle click
 var select = new Select({
@@ -95,17 +121,10 @@ dragBox.on('boxstart', function() {
 var cmdBox = document.getElementById('cmdBox');
 
 select.getFeatures().on(['add', 'remove'], function() {
-  console.log("features added/removed");
-  // console.log(selectedFeatures.getArray())
-  console.log("selected feats: ");
-  console.log(select.getFeatures().getArray()[0]);
-
   var innerHTML = select.getFeatures().getArray().filter(function(x){
-    console.log(x.type);
     return ["remote","computation"].includes(x.type)}).map(function(feature){
       var r;
       r = feature.getInfoHTML();
-      console.log("adding html:"+r)
       return r?r:document.createElement("div");
     }
   );
@@ -121,24 +140,6 @@ select.getFeatures().on(['add', 'remove'], function() {
     cmdBox.hidden = true;
     cmdBox.innerHTML = ""
   }
-
-  // if (remotes.length > 0) {
-  //   var cmdBoxInnerHTML=""
-  //   for(var i in remotes){
-  //     cmdBoxInnerHTML += "<div>"+remotes[i].uid+"</div>"
-  //   }
-  //
-  //   if(remotes.length>1){
-  //     cmdBoxInnerHTML+="<select>Combine with:<option>Mean</option><option>Difference</option></select>"
-  //   }
-  //   cmdBoxInnerHTML+="<div>Send to: <input type='number' style='width:30px'></input> </div>"
-  //   cmdBoxInnerHTML+="<button>Confirm</button>"
-  //
-  //   cmdBox.innerHTML = cmdBoxInnerHTML;
-  //   cmdBox.hidden = false;
-  // } else {
-  //   cmdBox.hidden = true;
-  // }
 });
 
 
@@ -148,18 +149,9 @@ map.addInteraction(select);
 
 
 // Connection Interaction
-
-// trying to exclude remotes and speakers from being modifiable...
-// var computationFeatures = audienceSource.getFeatures().filter(function(feature){feature.isComputation});
-// var modify = new Modify({source:audienceSource});
-// map.addInteraction(modify);
-
 function onConnectable(coordinate){
   var features = audienceSource.getFeatures().map(function(f){return f.type})
   console.log("features: "+features)
-
-
-
   var a = audienceSource.getFeaturesAtCoordinate(coordinate)
   var isOnConnectable = a.length>0;
   console.log("clicked on connectable: "+isOnConnectable);
@@ -231,24 +223,14 @@ connectionDraw.on('drawend',function(ev){
   }
   from = undefined;
 })
-// var connectionDraw = new Draw({type:"LineString", freehand:false,wrapX:true})
-
-// var snap =  new Snap ({source:audienceSource, edge:false})
-// snap.on('change',function(x){console.log('new snap change')});
-// map.addInteraction(snap);
 map.addInteraction(connectionDraw);
 
-
-
-
-
+// TODO - find smoother way of doing this
 map.getView().on('change:resolution', resizeObjects);
-// Find smoother way of doing this
 map.getView().on('change',positionSpeakers);
 
 
 function resizeObjects (){
-  console.log("hmm...");
   resizeRemotes();
   resizeComputations();
 }
@@ -265,6 +247,7 @@ function resizeRemotes(){
   var resolution = map.getView().getResolution();
   var radius = 15*resolution;
   for (var i in Remote.remotes){
+    //TODO some error here, seems like remotes gets out of sync somehow...
     Remote.remotes[i].getGeometry().setRadius(radius);
   }
 }
@@ -290,17 +273,18 @@ function positionSpeakers(){
 }
 
 
-
 map.getViewport().addEventListener('contextmenu', function (evt) {
   evt.preventDefault();
   var coordinate = map.getEventCoordinate(evt);
   var resolution = map.getView().getResolution();
   console.log(coordinate)
   var radius = 15*resolution;
-  new Computation(coordinate, audienceSource, radius)
+  var c = new Computation(coordinate, audienceSource, radius)
+  SCClientWS.send({type:"newConnectable",value:c.getGraphData()});
+  c.onComputationChange = function (){
+    SCClientWS.send({type:"updateConnectable", value:this.getGraphData()});
+  }
 })
-
-
 
 // global key mappings (hopefully these don't overwrite anything...)
 var closureKeyUp = document.onkeyup;
@@ -322,6 +306,12 @@ document.onkeyup = function(e) {
     for (var i in deletes){
       if (deletes[i].type =="computation"){
         deletedConnections = deletedConnections.concat(deletes[i].connections);
+        var msg = {
+          type: "removeConnectable",
+          value: {uid: deletes[i].uid,type: deletes[i].type}
+        }
+        //Tell SC that computation is deleted
+        SCClientWS.send(msg);
         deletes[i].delete();
         // select.getFeatures().remove(deletes[i]);
       } else if (deletes[i].type =="connection" && !deletedConnections.includes(deletes[i])){
@@ -365,28 +355,74 @@ document.onkeyup = function(e) {
 
 
 
-// WS send things....
-var ws;
+// // SC Client Websocket:
+// window.WebSocket = window.WebSocket || window.MozWebSocket;
+// var nodeSCClientWS= {readyState:0};
+//
+// try{
+//   console.log("connecting via ws to: ws://localhost:8000");
+// 	nodeServerWS = new WebSocket("ws://localhost:8000", 'echo-protocol');
+// } catch (e){
+// 	console.log("no WebSocket connection "+e)
+// }
+//
+// var connectToNodeSCClient = function(){
+//     if(nodeSCClientWS.readyState!= 1){
+//       console.log("connecting to sc client ws")
+//       try{
+//         nodeSCClientWS = new WebSocket("ws://"+location.hostname+":9000", 'echo-protocol')
+//       } catch (e){
+//         console.log("error connecting to sc client")
+//       }
+//       setTimeout(connectToNodeSCClient,5000)
+//     }
+// };
+// connectToNodeSCClient();
+//
+// nodeSCClientWS.onopen = function (){
+//   console.log("SC connection opened");
+// }
+// nodeSCClientWS.onclose = function(){
+//   connectToNodeSCClient();
+// }
+//
+// nodeSCClientWS.addEventListener("message", function(message){
+//   var msg;
+//   try{
+//     msg = JSON.parse(msg);
+//   } catch (e){
+//     console.log("could not parse ws message from sc client")
+//     return
+//   }
+//   console.log(msg);
+// })
+
+var nodeServerWS;
+
 try{
   console.log("connecting via ws to: "+location.hostname+":"+location.port);
-	ws = new WebSocket("ws://"+location.hostname+":"+location.port, 'echo-protocol');
+  nodeServerWS = new WebSocket("ws://"+location.hostname+":"+location.port, 'echo-protocol');
 } catch (e){
-	console.log("no WebSocket connection "+e)
+  console.log("no WebSocket connection "+e)
 }
 
-if (ws){
+if (nodeServerWS){
 
   // Tell the server we're here and we've joined
   // TODO - add location scrambling and UI to ask for permission/
   //        suggest alternative ways to participate
-  navigator.geolocation.getCurrentPosition(function(pos){
-    // longitude first aligning with openlayers' conventions
-    var coordinates = [pos.coords.longitude, pos.coords.latitude];
-    var msg = {type:"consented", coordinates:coordinates};
-    ws.send(JSON.stringify(msg))
-  });
 
-  ws.addEventListener('message', function(message){
+
+  // navigator.geolocation.getCurrentPosition(function(pos){
+  //   // longitude first aligning with openlayers' conventions
+  //   var coordinates = [pos.coords.longitude, pos.coords.latitude];
+  //   var msg = {type:"consented", coordinates:coordinates};
+  //   nodeServerWS.send(JSON.stringify(msg))
+  // });
+
+
+
+  nodeServerWS.addEventListener('message', function(message){
     var msg;
 
     try {
@@ -399,19 +435,35 @@ if (ws){
       console.log("WARNING: could not parse ws JSON message")
       console.log(msg);
     }
-
+    console.log("msg type: "+msg.type)
     if (msg.type == "params"){
-
-      updateRemoteParams(msg)
-
+      updateRemoteParams(msg.value)
     } else if (msg.type == "newRemote"){
       console.log('new remote: '+msg.uid)
       var remote = new Remote(msg.uid, Proj.fromLonLat(msg.coordinates), audienceSource);
+
+      var msg = {type:"subscribe", uid:msg.uid};
+      try{
+        nodeServerWS.send(JSON.stringify(msg))
+      } catch (e){
+        console.log("!!!!!ERROR couldn't sned subscribe request")
+        console.log(e);
+      }
+      // Tell SC a new remote
+      SCClientWS.send({type:"newConnectable",value:remote.getGraphData()})
+
+      // set onChange to tell SC when this remote changes
+      remote.onRemoteChange = function (){
+        // TODO @@@@ CONFIRM: I think 'this' refers to the remote here? if not need to change this
+        SCClientWS.send({type:"updateConnectable",value:this.getGraphData()})
+      }
     } else if (msg.type == "removeRemote"){
       try {
         console.log('remove remote')
-        audienceSource.removeFeature(Remote.remotes[msg.uid]);
-        Remote.remotes[msg.uid] = undefined
+        Remote.remotes[msg.uid].delete();
+        // audienceSource.removeFeature(Remote.remotes[msg.uid]);
+        SCClientWS.send({type:"removeConnectable",value:{type:"remote",uid:msg.uid}})
+        // delete Remote.remotes[msg.uid]
       } catch (e){
         console.log("WARNING: Error deleting remote <"+msg.uid+"> :" +e)
       }
@@ -424,18 +476,42 @@ if (ws){
 
 
 
+// var things = [[51.5074, -0.1278], [19.4326, -99.1332], [35.6895, 139.6917],[43,-79]]
+//
+// for (var i in things){
+//   var coordinate = things[i];
+//   console.log(coordinate)
+//   var featureOpts = {
+//     geometry: new Circle(coordinate, 587036.3772301537),
+//     labelPoint: new Point(coordinate),
+//     name: i
+//   }
+//   var feature = new Feature(featureOpts);
+//   audienceSource.addFeature(feature)
+// }
 
 
 
+// setTimeout(function(){
+// // for making figures:
+// var aa =new Remote(11, Proj.fromLonLat([43,-79]), audienceSource);
+// var bb = new Remote(22, Proj.fromLonLat([50,-109]), audienceSource);
+// var cc = new Remote(33, Proj.fromLonLat([60,43]), audienceSource);
+// var dd = new Remote(44, Proj.fromLonLat([67,94]), audienceSource);
+//
+// aa.onRemoteChange = function (){}
+// bb.onRemoteChange = function (){}
+// cc.onRemoteChange = function (){}
+// dd.onRemoteChange = function (){}
+// },4000)
 
 
 
-
-
-
-
-
-
+function updateRemoteParams(msg){
+  // @@@***%%% DANGER CHANGE THIS BACKs
+  msg.loudness= msg.rms;
+  Remote.remotes[msg.uid].setParams(msg);
+}
 
 
 //

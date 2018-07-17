@@ -4,7 +4,6 @@ try{
 } catch (e){
 	console.log("no WebSocket connection")
 }
-
 var ac=undefined;
 var globalGain
 var coordinates;
@@ -15,6 +14,7 @@ var microphoneNode;
 var longWindow = 200;
 var mediumWindow = 50;
 var shortWindow = 10;
+var consented = false;
 
 var emptyMeanStdDev = {mean:undefined,stdDev:undefined}
 var emptyWindowedValues = {long:emptyMeanStdDev,medium:emptyMeanStdDev,short:emptyMeanStdDev}
@@ -51,10 +51,8 @@ function start(){
     globalGain.gain.value = 1;
     globalGain.connect(ac.destination)
     whitenoiseBuffer = ac.createBuffer(2, ac.sampleRate * 7 , ac.sampleRate);
-		coordinates = navigator.getCoordinates();
 
-		navigator.geolocation.getCurrentPosition(function(x){sendNewRemote(x,0)});
-
+		toggleShare();
 
     for (var channel = 0; channel < whitenoiseBuffer.numberOfChannels; channel++) {
       var nowBuffering = whitenoiseBuffer.getChannelData(channel);
@@ -73,16 +71,20 @@ function start(){
     "featureExtractors": Object.keys(features),
     "callback": analyze
   }
-
   meydaAnalyzer = Meyda.createMeydaAnalyzer(options);
   console.log("Meyda Initialized "+ac)
-  meydaAnalyzer.start()
+
+	navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
+			microphoneNode = ac.createMediaStreamSource(stream);
+			microphoneNode.connect(globalGain);
+			meydaAnalyzer.start()
+	})
   draw();
-  setInterval(sendData,1000)
+  setInterval(sendData,100)
 }
 
 function analyze(data){
-	everyXPrintY(20,data);
+	// everyXPrintY(20,data);
   sendCounter++;
   for(i in features){
     if (i =="loudness"){
@@ -114,7 +116,7 @@ function analyze(data){
   params.spectralCentroid.vals.push(data['spectralCentroid']/fftSize);
   params.spectralCentroid.vals = params.spectralCentroid.vals.slice(-1*(longWindow))
 
-  params.rms.vals.push(data['rms']*2000);
+  params.rms.vals.push(data['rms']*8000);
   params.rms.vals = params.rms.vals.slice(-1*(longWindow))
 }
 
@@ -125,6 +127,32 @@ function draw(){
     drawArrayOnCanvas(params[i].vals, params[i].canvas, 0, 1)
   }
 }
+
+function toggleShare(){
+	if(!consented){
+		navigator.geolocation.getCurrentPosition(function(pos){
+			var coordinates = [pos.coords.longitude, pos.coords.latitude];
+			var msg = {type:"consented",coordinates:coordinates}
+			try{
+				ws.send(JSON.stringify(msg))
+				console.log("position sent")
+				consented = true;
+			} catch (e){
+				console.log("WARNING: could not send values msg over ws")
+			}
+		})
+	} else{
+		var msg = {type:"unconsented"}
+		try{
+			ws.send(JSON.stringify(msg))
+			consented = false;
+		} catch (e){
+			console.log("couldn't send unconsent message: "+e)
+		}
+	}
+}
+
+
 
 // Audio stuff
 function createMicrophoneNode(){
@@ -152,13 +180,12 @@ function sendData(){
     }
     msg[i] = mean(params[i].vals.slice(sendCounter*(-1)))
   }
-  msg.type = "values"
+  msg.type = "params"
   try{
     ws.send(JSON.stringify(msg))
   } catch (e){
     console.log("WARNING: could not send values msg over ws")
   }
-  console.log(msg)
   sendCounter=0;
 }
 

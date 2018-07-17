@@ -85,7 +85,6 @@ Connectable.prototype.connect = function (other){
 
 // Connection.prototype.delete handles removing the connection from the appropriate arrays (for 'from', 'to', and 'Connection.connections')
 Connectable.prototype.disconnect = function (other){
-
   var connection;
   // Check if connection already exists
   for(var i=0; i<this.connections.length(); i++){
@@ -100,46 +99,9 @@ Connectable.prototype.disconnect = function (other){
   } else {
     console.log("WARNING: connection not found, could not delete");
   }
-
-  //
-  //
-  // // removes connection from
-  // if(this.source != other.source){
-  //   throw "Error: cannot disconnect objects that have different vector sources"
-  // }
-  //
-  // var index;
-  // // Check if connection already exists
-  // for(var i=0; i<this.connections.length(); i++){
-  //   var con = this.connections[i];
-  //   if(con.to == other){
-  //     index = i;
-  //     break;
-  //   }
-  // }
-  // if (index){
-  //   this.connections.splice(index,1);
-  // } else {
-  //   console.log("WARNING: tried to disconnect a non-existant connection");
-  // }
-  //
-  // var globalIndex;
-  // // Check if connection already exists
-  // for(var i=0; i<Connectable.connections.length(); i++){
-  //   var con = Connectable.connections[i];
-  //   if(con.to == other && con.from == this){
-  //     globalIndex = i;
-  //     break;
-  //   }
-  // }
-  // if (globalIndex){
-  //   Connectable.connections.splice(globalIndex,1);
-  // } else {
-  //   console.log("WARNING: tried to disconnect a non-existant connection from globalConnections");
-  // }
-
 }
 
+// Deletes connections and the implicit object. 3 connections arrays are updated via connections.prototype.delete
 Connectable.prototype.delete = function (){
   this.disconnectAll();
   this.setStyle(new Style({}));
@@ -148,6 +110,7 @@ Connectable.prototype.delete = function (){
   Connectable.printGlobalConnections();
 }
 
+// Returns list of input connections
 Connectable.prototype.getInputConnections = function () {
   var r = []
   for(var i in this.connections){
@@ -158,6 +121,7 @@ Connectable.prototype.getInputConnections = function () {
   return r;
 }
 
+// Returns list of output connections
 Connectable.prototype.getOutputConnections = function () {
   var r = []
   for(var i in this.connections){
@@ -168,6 +132,8 @@ Connectable.prototype.getOutputConnections = function () {
   return r;
 }
 
+// Disconnect all connections from implicit Connectable
+// connection.prototype.delete takes care of handling Conneciton.connections, this.connections, and other.connections
 Connectable.prototype.disconnectAll = function (){
   var deleteList = []
   // need to pop 0th each iteration rather than for loop bc indexing gets screwed up
@@ -177,10 +143,16 @@ Connectable.prototype.disconnectAll = function (){
   }
 }
 
-Connectable.prototype.print = function(){
-  console.log(this.type+": "+this.uid);
+Connectable.prototype.toString = function (){
+  return (this.type+": "+this.uid)
 }
 
+// Convenience for printing
+Connectable.prototype.print = function(){
+  console.log(this.toString());
+}
+
+// Convenience for printing
 Connectable.printGlobalConnections = function (){
   Connectable.connections = Connectable.connections?Connectable.connections:[];
   console.log ("______________")

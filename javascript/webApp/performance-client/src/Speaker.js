@@ -28,6 +28,10 @@ var Speaker = function (coordinate, source, initialRadius){
 Speaker.eightChannelSpeakerCoordinateRatios = [[1/3,1],[2/3,1],[1,2/3],[1,1/3],[2/3,0],[1/3,0],[0,1/3],[0,2/3]];
 Speaker.prototype = Object.create(Connectable.prototype,{constructor:Speaker});
 
+Speaker.prototype.getGraphData = function(){
+  return {uid:this.uid, type:this.type}
+}
+
 Speaker.prototype.delete = function (){
   console.log("WARNING: speakers should probably not be deleted...")
 }

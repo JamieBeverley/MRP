@@ -29,7 +29,10 @@ Params.prototype.getSetterHTML = function (){
     numInput.className = "params";
     numInput.onchange = function(){
       var val = parseFloat(numInput.value);
-      closure[Params.params[j]]=val;
+      var params = closure.getParams();
+      params[Params.params[j]] = val;
+      closure.setParams(params)
+      // closure[Params.params[j]]=val;
     }
     rightCol.appendChild(numInput);
     row.appendChild(leftCol);
@@ -41,6 +44,33 @@ Params.prototype.getSetterHTML = function (){
   //   container.appendChild(dom[i])
   // };
   return container
+}
+
+Params.prototype.getParams = function(){
+  var r = {
+    clarity: this.clarity,
+    strength: this.strength,
+    loudness: this.loudness,
+    turbidity: this.turbidity,
+    pitch: this.pitch,
+    spectralCentroid: this.spectralCentroid
+  }
+  return r;
+}
+
+Params.prototype.onParamsChange = function(){};
+
+// This should always be used instead of setting theses parameters individually to comply with
+// the hacky pseudo-event system
+// TODO - make it so params can't be set without using this setter function
+Params.prototype.setParams = function (obj){
+  this.clarity = obj.clarity;
+  this.turbidity = obj.turbidity;
+  this.spectralCentroid = obj.spectralCentroid;
+  this.loudness = obj.loudness;
+  this.pitch = obj.pitch;
+  this.strength = obj.strength;
+  this.onParamsChange();
 }
 
 Params.prototype.getInfoHTML = function (){

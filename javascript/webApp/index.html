@@ -9,18 +9,20 @@
     <link href="style.css" rel="stylesheet" type="text/css"/>
 </head>
 
-<body id="body" class="bg-info">
+<body id="body">
   <div class="settings">
     <input type="button" value="start" onclick="start()"></input>
     <input type="button" value="stop" onclick="meydaAnalyzer.stop()"></input>
-
   </div>
-  <div>
+  <!-- <div>
     Microphone:
     <input type="button" value="createMicrophoneNode" onclick="createMicrophoneNode()"></input>
     <input type="button" value="playMicrophone" onclick="playMicrophone()"></input>
     <input type="button" value="stopMicrophone" onclick="stopMicrophone()"></input>
-  </div>
+  </div> -->
+  <!-- <div>
+    <button id="share" onclick="toggleShare()">Share</button>
+  </div> -->
   <div>
     <div>
       <div class="title">Clarity:</div>
@@ -43,7 +45,7 @@
       <canvas id="spectralCentroidCanvas"></canvas>
     </div>
     <div>
-      <div class="title">RMS:</div>
+      <div class="title">Loudness:</div>
       <canvas id="rmsCanvas"></canvas>
     </div>
   </div>
