@@ -20,10 +20,10 @@ import Snap from 'ol/interaction/snap'
 
 import Modify from 'ol/interaction/modify'
 // ol.interaction.defaults(opt_options)
-import Remote from './Remote.js'
-import Speaker from './Speaker.js'
-import Computation from './Computation.js'
-import Connection from './Connection.js'
+import Remote from './connectables/Remote.js'
+import Speaker from './connectables/Speaker.js'
+import Computation from './connectables/Computation.js'
+import Connection from './connectables/Connection.js'
 
 import SCClientWS from './web-socket/SCClientWS.js'
 // NOTE - if you're getting an error like 'cosMap' undefined

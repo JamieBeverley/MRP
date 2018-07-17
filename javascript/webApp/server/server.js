@@ -7,9 +7,10 @@ var server = http.createServer();
 var expressServer = express();
 
 var password = "testing" // for performers
-
+console.log(__dirname+"\\..\\")
 //http server using current directory on 8000
-expressServer.use(express.static(__dirname));
+// expressServer.use(express.static(__dirname+"\\..\\"));
+expressServer.use(express.static("C:\\Users\\jamie\\AppData\\Local\\SuperCollider\\Extensions\\SuperCollider-Extensions\\MRP\\javascript\\webApp"));
 server.on('request', expressServer)
 server.listen(8000, function(){console.log("listening")})
 

@@ -4,7 +4,7 @@ import Polygon from 'ol/geom/polygon'
 import Circle from 'ol/geom/circle'
 import Style from 'ol/style/style'
 import Params from './Params.js'
-import SCState from './scstate.js'
+import SCState from '../SCState.js'
 
 var ComputationUID = 0;
 var Computation = function (coordinate, source, initialRadius, computation){

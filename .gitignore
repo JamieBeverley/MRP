@@ -7,7 +7,9 @@ javascript/webApp/performance-client/node_modules/*
 javascript/webApp/performance-client/src/osm-style.css
 javascript/webApp/performance-client/src/meyda.js
 javascript/webApp/performance-client/src/meyda.js.map
-*/meyda/*
+
+node_modules/
+meyda/
 *.png
 */.js.map
-**/notes.txt
+notes.txt
