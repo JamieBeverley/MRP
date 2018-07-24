@@ -13,3 +13,5 @@ meyda/
 *.png
 */.js.map
 notes.txt
+
+osm-style.css

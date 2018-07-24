@@ -119,10 +119,7 @@ function createUniformWindowedObj(mean,stdDev){
 }
 
 
-
-
 // Utilities....
-
 function mean (l){
   var x = 0;
   for (i in l){

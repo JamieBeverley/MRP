@@ -7,22 +7,13 @@ var server = http.createServer();
 var expressServer = express();
 
 var password = "testing" // for performers
-console.log(__dirname+"\\..\\")
-//http server using current directory on 8000
-// expressServer.use(express.static(__dirname+"\\..\\"));
-expressServer.use(express.static("C:\\Users\\jamie\\AppData\\Local\\SuperCollider\\Extensions\\SuperCollider-Extensions\\MRP\\javascript\\webApp"));
+var dir = __dirname+"\\..\\"
+expressServer.use(express.static(dir));
+console.log("serving: "+dir)
 server.on('request', expressServer)
 server.listen(8000, function(){console.log("listening")})
 
 var wsServer = new WebSocket.Server({server: server});
-
-// var scOSC = new osc.UDPPort({
-// 	localAddress: "0.0.0.0",
-// 	localPort: 9000,
-// 	remoteAddress: "127.0.0.1",
-// 	remotePort: 9001
-// })
-// scOSC.open();
 
 var uid =0;
 var numClients=0;

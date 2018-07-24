@@ -1,50 +1,35 @@
+// Dependencies
 import Map from 'ol/map';
 import View from 'ol/view';
 import TileLayer from 'ol/layer/tile';
-import OL from "ol"
 import OSM from 'ol/source/osm'
 import Draw from 'ol/interaction/draw'
 import VectorSource from 'ol/source/vector'
 import VectorLayer from 'ol/layer/vector'
-import Circle from 'ol/geom/circle'
-import LineString from 'ol/geom/linestring'
-import Feature from 'ol/feature'
 import Proj from 'ol/proj' // fromLonLat
-import Style from 'ol/style/style' // for resizing
 import Select from 'ol/interaction/select'
 import DragBox from 'ol/interaction/dragbox'
 import Condition from 'ol/events/condition'
-import Extent from 'ol/extent'
 import Interaction from 'ol/interaction'
-import Snap from 'ol/interaction/snap'
 
-import Modify from 'ol/interaction/modify'
-// ol.interaction.defaults(opt_options)
+import Meyda from "meyda"
+
+// Local Imports
 import Remote from './connectables/Remote.js'
 import Speaker from './connectables/Speaker.js'
 import Computation from './connectables/Computation.js'
 import Connection from './connectables/Connection.js'
-
 import SCClientWS from './web-socket/SCClientWS.js'
 // NOTE - if you're getting an error like 'cosMap' undefined
 //       you need to change the src of one of meyda's depends:
 //       node_modules/dct/src/dct.js line:10, add 'var' before cosMap;
-import Meyda from "meyda"
 
 
-// del
-import Point from 'ol/geom/point'
-import Icon from 'ol/style/icon'
 
-
-// @ damn
 SCClientWS.initSCClientWS();
-
 
 var audienceSource = new VectorSource({wrapX: false});
 var audienceLayer = new VectorLayer ({source:audienceSource});
-
-
 var map = new Map({
   target: 'map',
   layers: [
