@@ -14,22 +14,25 @@ Utilities.drawArrayOnCanvas = function (array, canvas,expectedMin,expectedMax){
 
   var clipped = false;
   ctx.fillStyle = "rgb(0,0,0)"
-  for (i in array){
+  for (var i in array){
     ctx.fillRect(i*rectWidth,height,rectWidth,(-1)*array[i]*height/expectedMax);
     if(array[i]>expectedMax){
       clipped = true;
     }
   }
   if(clipped){
-    ctx.fillStyle="rgb(255,0,0)"
+    ctx.fillStyle="rgb(200,200,200)"
     ctx.fillRect(0,0,canvas.width,10)
   }
 }
 
 Utilities.calculateWindowedValues = function (arr,longWin,mediumWin,shortWin){
-  var long=longStdDev=0;
-  var medium=mediumStdDev=0;
-  var short=shortStdDev=0;
+  var long=0;
+  var longStdDev=0;
+  var medium=0;
+  var mediumStdDev=0;
+  var short=0;
+  var shortStdDev=0;
   // Calc Means..
   for (var i = arr.length; i>0; i--){
     var windowPassed = arr.length-i;
@@ -85,7 +88,7 @@ Utilities.ampdb = function(amp){
 
 Utilities.max = function(arr){
   var m = arr[0]
-  for (i in arr){
+  for (var i in arr){
     if (m<arr[i]){m=arr[i]}
   }
   return m
@@ -93,7 +96,7 @@ Utilities.max = function(arr){
 
 Utilities.min = function(arr){
   var min = arr[0]
-  for (i in arr){
+  for (var i in arr){
     if (min>arr[i]){min=arr[i]}
   }
   return min
@@ -105,7 +108,7 @@ Utilities.roundTo = function(x,n){
 }
 
 Utilities.mean = function (a){
-  return meanUpTo(a,-1)
+  return Utilities.meanUpTo(a,-1)
 }
 
 var counter =0;

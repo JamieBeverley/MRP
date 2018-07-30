@@ -2,21 +2,102 @@ import Meyda from "meyda"
 import Utilities from "./Utilities.js"
 
 var Audio = {}
-var emptyMeanStdDev = {mean:undefined,stdDev:undefined}
-var emptyWindowedValues = {long:emptyMeanStdDev,medium:emptyMeanStdDev,short:emptyMeanStdDev}
+Audio.buffers = {}
+Audio.samplesUrl = window.location.pathname.substring(0,window.location.pathname.lastIndexOf("/"))+"/samples/";
 
+Audio.corpus = undefined
+Audio.ac = undefined;
+
+Audio.init = function (){
+  Audio.loadCorpus("corpus.json");
+  try{
+    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+    Audio.ac = new AudioContext();
+  } catch (e){
+    alert("Web Audio Not supported by your browser, please try using a recent version of Firefox or Google Chrome")
+  }
+}
+
+Audio.loadCorpus = function(url){
+  var request = new XMLHttpRequest();
+  request.open("GET", url, true);
+  request.responseType = "json"
+  request.onload = function() {
+     if(request.readyState != 4) throw Error("readyState != 4 in callback of loadAndPlayScore");
+     if(request.status != 200) throw Error("status != 200 in callback of loadAndPlayScore");
+     if(request.response == null) throw Error("JSON response null in callback of loadAndPlayScore");
+     console.log("loaded corpus: " + url);
+     Audio.corpus = this.response
+ }
+  request.send();
+}
 
 // sonification
-Audio
+Audio.sonificationGain = undefined
 
+Audio.selectAndPlayGrain = function (params){
+  var minDist = Infinity;
+  match = undefined;
+  for (var i in Audio.corpus){
+    var grain = Audio.corpus[i];
+    var dist = 0;
+    for(var j in grain){
+      dist = dist+Math.abs(params[j]-grain[j])
+    }
+    if(dist < minDist){
+      minDist = dist;
+      match = grain;
+      grain.url = i;
+    }
+  }
+  Audio.playGrain(match);
+}
 
+Audio.playGrain = function (grain){
+  if(Audio.buffers[grain.url]){
+    var absn = Audio.ac.createBufferSource();
+    absn.buffer = Audio.buffers[grain.url];
+    absn.connect(Audio.sonificationGain);
+    absn.start();
+  } else{
+    var request = new XMLHttpRequest();
 
+    var url = Audio.samplesUrl + grain.url;
+    var request = new XMLHttpRequest();
+    try {
+      request.open('GET',url,true);
+      request.responseType = 'arraybuffer';
 
+      request.onload = function() {
+        Audio.ac.decodeAudioData(request.response, function(x) {
+          var absn = Audio.ac.createBufferSource();
+          absn.buffer = x;
+          absn.connect(Audio.sonificationGain);
+          absn.start();
+          Audio.buffers[grain.url] = x
+        },
+        function(err) {
+          console.log("error decoding sample " + url);
+        }
+      );
+      }
 
+      request.send();
+    } catch (e){
+      console.log("could not load and decode audio buffer")
+    }
+  }
+}
+
+Audio.mute = function (){
+  Audio.sonificationGain.disconnect(Audio.ac);
+};
+
+Audio.unmute = function(){
+  Audio.sonificationGain.connect(Audio.ac)
+};
 
 //
-Audio.ac = undefined
-Audio.machineListening = false;
 Audio.meydaAnalyzer = undefined
 Audio.microphoneNode = undefined
 Audio.meydaGain = undefined
@@ -26,6 +107,9 @@ Audio.config = {
   mediumWindow:50,
   shortWindow:10
 }
+
+var emptyMeanStdDev = {mean:undefined,stdDev:undefined}
+var emptyWindowedValues = {long:emptyMeanStdDev,medium:emptyMeanStdDev,short:emptyMeanStdDev}
 
 Audio.features = {
   'amplitudeSpectrum':{vals:[], windowedValues:emptyWindowedValues,expectedMin:0,expectedMax:1},
@@ -51,7 +135,6 @@ for (var i in Audio.params){
 Audio.startMachineListening = function (){
   // Try to init web audio things
   try {
-    window.AudioContext = window.AudioContext || window.webkitAudioContext;
     if(!Audio.ac){
       Audio.ac = new AudioContext
     }
@@ -59,7 +142,6 @@ Audio.startMachineListening = function (){
       Audio.meydaGain = Audio.ac.createGain();
       Audio.meydaGain.gain.value = 1;
     }
-    Audio.machineListening = true;
   } catch(e){
     console.log('Could not create audio context: '+e)
     return
@@ -79,34 +161,41 @@ Audio.startMachineListening = function (){
   }
 
   if(!Audio.microphoneNode){
-	   Audio.microphoneNode = Audio.ac.createMediaStreamSource(stream);
+    navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
+  			Audio.microphoneNode = Audio.ac.createMediaStreamSource(stream);
+  			Audio.microphoneNode.connect(Audio.meydaGain);
+  			Audio.meydaAnalyzer.start()
+        // Audio.draw();
+          window.requestAnimationFrame(Audio.draw);
+        console.log("Meyda started")
+    });
    } else{
      Audio.microphoneNode.disconnect();
+     Audio.microphoneNode.connect(Audio.meydaGain);
+     Audio.meydaAnalyzer.start()
+     // Audio.draw();
+       window.requestAnimationFrame(Audio.draw);
+     console.log("Meyda started")
    }
-
-   Audio.microphoneNode.connect(Audio.meydaGain);
-   Audio.meydaAnalyzer.start()
-   Audio.draw();
 }
 
 Audio.stopMachineListening = function(){
   Audio.meydaAnalyzer.stop();
   Audio.microphoneNode.disconnect(Audio.meydaGain)
-  Audio.machineListening = false;
 }
 
 Audio.analyze = function(data){
 
-  for(i in Audio.features){
+  for(var i in Audio.features){
     if (i =="loudness"){
       Audio.features['loudness'].total.vals.push(data['loudness'].total)
-      Audio.features['loudness'].total.vals = Audio.features['loudness'].total.vals.slice((-1)*longWindow);
+      Audio.features['loudness'].total.vals = Audio.features['loudness'].total.vals.slice((-1)*Audio.config.longWindow);
       Audio.features['loudness'].total.windowedValues = Utilities.calculateWindowedValues(Audio.features['loudness'].total.vals,Audio.config.longWindow,Audio.config.mediumWindow,Audio.config.shortWindow)
     } else if (i == "amplitudeSpectrum"){
       Audio.features['amplitudeSpectrum'].vals = data['amplitudeSpectrum'];
     } else {
       Audio.features[i].vals.push(data[i])
-      Audio.features [i].vals = Audio.features[i].vals.slice((-1)*longWindow)
+      Audio.features [i].vals = Audio.features[i].vals.slice((-1)*Audio.config.longWindow)
       Audio.features[i].windowedValues = Utilities.calculateWindowedValues(Audio.features[i].vals,Audio.config.longWindow,Audio.config.mediumWindow,Audio.config.shortWindow)
     }
   }
@@ -132,42 +221,42 @@ Audio.analyze = function(data){
 
 // Visualizations/drawing
 Audio.draw = function(){
-  window.requestAnimationFrame(draw);
-  for(i in Audio.params){
-    drawArrayOnCanvas(Audio.params[i].vals, Audio.params[i].canvas, 0, 1)
+    window.requestAnimationFrame(Audio.draw);
+  for(var i in Audio.params){
+    Utilities.drawArrayOnCanvas(Audio.params[i].vals, Audio.params[i].canvas, 0, 1)
   }
 }
 
 
-Audio.calculatePitch = function (features, nonGraphables){
+function calculatePitch  (features, nonGraphables){
   // var m = mean(features['loudness'].specific)
   // var maximum = max(features['loudness'].specific)
-  var m = mean(features['amplitudeSpectrum'])
-  var maximum = max(features['amplitudeSpectrum'])
+  var m = Utilities.mean(features['amplitudeSpectrum'])
+  var maximum = Utilities.max(features['amplitudeSpectrum'])
   // TODO - factor in spectral flatness
 
-  var r = clip((maximum/m)/128)
+  var r = Utilities.clip((maximum/m)/128)
   return r
 }
 
 
 // TODO - peak/gust detections
-Audio.calculateTurbidity = function (features, nonGraphables){
+function calculateTurbidity (features, nonGraphables){
   var spectralTurbidity, powerTurbidity;
   var centroid, rms;
 
   if(nonGraphables==undefined){
-      var cMean = mean(features['spectralCentroid'])
+      var cMean = Utilities.mean(features['spectralCentroid'])
       var cStdDev = Utilities.standardDeviationdDev(features['spectralCentroid'])
       centroid = createUniformWindowedObj(cMean,cStdDev)
-      var rMean = mean(features['rms'])
+      var rMean = Utilities.mean(features['rms'])
       var rStdDev = Utilities.standardDeviation(features['rms'])
       rms = createUniformWindowedObj(rMean,rStdDev)
   } else{
     centroid = nonGraphables['spectralCentroid'].windowedValues;
     rms = nonGraphables['rms'].windowedValues;
   }
-  spectralTurbidity = clip(scaleSpectralTurbidity((centroid.long.stdDev/3+centroid.medium.stdDev/3+centroid.short.stdDev/3)/20),0,1);
+  spectralTurbidity = Utilities.clip(scaleSpectralTurbidity((centroid.long.stdDev/3+centroid.medium.stdDev/3+centroid.short.stdDev/3)/20),0,1);
   powerTurbidity = Math.sqrt((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.05);
   var r = 0.6*powerTurbidity+0.4*spectralTurbidity;
   return r
@@ -176,41 +265,41 @@ Audio.calculateTurbidity = function (features, nonGraphables){
 
 
 // Lower frequency+higher volume -> greater 'strength'
-Audio.calculateStrength = function (features, nonGraphables){
-  var centroid, loudnessTotal;
+function calculateStrength (features, nonGraphables){
+  var centroid, loudnessTotal, loudness;
   if(nonGraphables){
     // how to normalize this accross devices - some will be recording louder than others?
     // calibration period?
-    loudnessTotal = nonGraphables['loudnessTotal'].windowedValues
+    loudnessTotal = nonGraphables['loudness'].total.windowedValues
     centroid = nonGraphables['spectralCentroid'].windowedValues;
   } else {
-    loudnessTotal = createUniformWindowedObj(mean(features['loudness'].total),Utilities.standardDeviation(features['loudness'].total))
+    loudnessTotal = createUniformWindowedObj(Utilities.mean(features['loudness'].total),Utilities.standardDeviation(features['loudness'].total))
   }
-  loudness = clip((loudnessTotal.long.mean+loudnessTotal.medium.mean+loudnessTotal.short.mean)/3/50,0,1)
-  var normalizedCentroid = clip(scaleCentroidStrength(((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3)/(fftSize/2)),0,1)
+  loudness = Utilities.clip((loudnessTotal.long.mean+loudnessTotal.medium.mean+loudnessTotal.short.mean)/3/50,0,1)
+  var normalizedCentroid = Utilities.clip(scaleCentroidStrength(((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3)/(Audio.config.fftSize/2)),0,1)
   return normalizedCentroid*0.2+0.8*loudness;
 }
 
 
-Audio.calculateClarity = function(features, nonGraphables){
-  var centroid, spectralFlatness, rms
+function calculateClarity (features, nonGraphables){
+  var centroid, spectralFlatness, rms,flatness;
 
   if (nonGraphables){
     centroid = nonGraphables['spectralCentroid'].windowedValues
     flatness = nonGraphables['spectralFlatness'].windowedValues;
     rms = nonGraphables['rms'].windowedValues
   } else {
-    centroid = createUniformWindowedObj(mean(features['spectralCentroid']), Utilities.standardDeviation(features['spectralCentroid']))
-    rms = createUniformWindowedObj(mean(features['rms']),Utilities.standardDeviation(features['rms']))
-    flatness = createUniformWindowedObj(mean(features['spectralFlatness']), Utilities.standardDeviation(features['spectralFlatness']))
+    centroid = createUniformWindowedObj(Utilities.mean(features['spectralCentroid']), Utilities.standardDeviation(features['spectralCentroid']))
+    rms = createUniformWindowedObj(Utilities.mean(features['rms']),Utilities.standardDeviation(features['rms']))
+    flatness = createUniformWindowedObj(Utilities.mean(features['spectralFlatness']), Utilities.standardDeviation(features['spectralFlatness']))
   }
   var short = scaleSpectralFlatness(flatness.short.mean)
   var long = scaleSpectralFlatness(flatness.long.mean)
   var medium = scaleSpectralFlatness(flatness.medium.mean)
-  var lowness = Math.sqrt((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3/(fftSize/2))
-  var spectralClarity = (1-clip((long+short+medium)/3))*lowness
+  var lowness = Math.sqrt((centroid.long.mean+centroid.medium.mean+centroid.short.mean)/3/(Audio.config.fftSize/2))
+  var spectralClarity = (1-Utilities.clip((long+short+medium)/3))*lowness
   var levelClarity;
-  levelClarity = 1-clip(Math.sqrt((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.05));
+  levelClarity = 1-Utilities.clip(Math.sqrt((rms.long.stdDev/rms.long.mean/3+rms.medium.stdDev/rms.medium.mean/3+rms.short.stdDev/rms.short.mean/3)/1.05));
   var r = spectralClarity*0.7+levelClarity*0.3;
   return r
 }
@@ -225,7 +314,7 @@ function scaleCentroidStrength(x){
 
 // crudely mapped sigmoid...
 function scaleSpectralTurbidity(x){
-  return 1/(1+Math.pow(Math.E,-10*clip(x,0,1)+5))
+  return 1/(1+Math.pow(Math.E,-10*Utilities.clip(x,0,1)+5))
 }
 
 

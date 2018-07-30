@@ -1,10 +1,10 @@
 import Remote from "./Remote.js"
-
+import Proj from 'ol/proj'
 
 var WS = {}
 WS.ws = {readyState:0};
 
-WS.init = function (){
+WS.init = function (source){
   try{
     window.WebSocket = window.WebSocket || window.MozWebSocket;
   } catch (e){
@@ -23,17 +23,23 @@ WS.init = function (){
 
   WS.ws.addEventListener('message', function(message){
     var msg = parseMessage(message);
+    console.log("message: "+msg.type)
     if (msg.type == "params"){
 			// TODO - do something
+      sonifyParams(msg);
     } else if (msg.type == "newRemote"){
       // TODO do something
+      console.log("adding new remote");
+      new Remote(msg.uid, Proj.fromLonLat(msg.coordinates), source)
     } else if ("removeRemote"){
       // TODO do something
+      console.log("deleting remote: "+Remote.remotes[msg.uid]);
+      Remote.remotes[msg.uid].delete();
     } else {
         console.log("WARNING: WS message with unknown type <"+msg.type+"> received.")
     }
   })
-
+  console.log("WebSocket initialized")
 }
 
 WS.sendParams = function(params){
@@ -52,9 +58,15 @@ WS.sendParams = function(params){
 function parseMessage(message){
   var msg;
   try {
-    msg = JSON.parse(message)
+    if(message.data){
+      msg = JSON.parse(message.data)
+    } else {
+      msg = JSON.parse(message)
+    }
+
   } catch(e){
     console.log("could not parse message")
+    console.log(message);
     console.log(e)
     return undefined;
   }
@@ -72,5 +84,10 @@ WS.send = function (msg) {
     console.log("ERROR: could not send sc ws message: "+e)
   }
 }
+
+function sonifyParams(params){
+  console.log("sonify..."+params)
+}
+
 
 export default WS

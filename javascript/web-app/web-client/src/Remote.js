@@ -10,7 +10,7 @@ var Remote = function (uid, coordinate, source){
 
   // inherit from connectable
   var featureOpts = {
-    geometry: new Circle(coordinate, 1.5e4),
+    geometry: new Circle(coordinate, 1.5e5),
     labelPoint: new Point(coordinate),
     name: this.uid
   }

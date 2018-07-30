@@ -2,8 +2,9 @@
   --main-bg-color: rgb(0,0,0);
   --panel-bg-color: #00838F;
   --light-panel-color:#00BCD4;
-  --light-panel-color-selected:#B2EBF2;
-  --font-color:#E0F7FA
+  --light-panel-selected-color:#B2EBF2;
+  --font-color:#E0F7FA;
+  --light-panel-selected-font-color: #00838F;
 }
 
 
@@ -41,12 +42,16 @@ body{
 #header{
   height: 7%;
   width:100%;
-  background-color: var(--panel-bg-color)
+  background-color: var(--panel-bg-color);
 }
 
 .view-selector{
-  width:33%;
+  box-sizing: border-box;
+  width:33.33%;
+  float:left;
   height: 100%;
+  border-right: 2pt solid rgb(200,200,200);
+  border-left: 2pt solid rgb(200,200,200);
   position:relative;
   display: inline-block;
   text-align: center;
@@ -54,14 +59,35 @@ body{
   background-color: var(--light-panel-color);
 }
 
-.view-selector-selected{
-  width:33%;
+.view-selector-inactive{
+  box-sizing: border-box;
+  border-right: 2pt solid rgb(200,200,200);
+  border-left: 2pt solid rgb(200,200,200);
+  pointer-events: none;
+  width:33.33%;
+  float: left;
   height: 100%;
   position:relative;
   display: inline-block;
   text-align: center;
   font-size: 50px;
-  background-color: var(--light-panel-color-selected);
+  background-color: rgb(210,210,210);
+  color: rgb(225,225,225)
+}
+
+.view-selector-selected{
+  box-sizing: border-box;
+  border-right: 2pt solid rgb(200,200,200);
+  border-left: 2pt solid rgb(200,200,200);
+  width:33.33%;
+  height: 100%;
+  float: left;
+  position:relative;
+  display: inline-block;
+  text-align: center;
+  font-size: 50px;
+  background-color: var(--light-panel-selected-color);
+  color: var(--light-panel-selected-font-color);
   border-top-left-radius: 15px;
   border-top-right-radius: 15px;
 }
@@ -102,7 +128,7 @@ body{
 }
 
 .visuzlization-canvas{
-  
+  background-color: rgb(200,200,200);
   z-index: 0;
   border: 1pt solid red;
   height: 100%;
@@ -119,7 +145,7 @@ body{
   left:0%;
   z-index: 1;
   border: 3pt-solid-black;
-  position: absolute;
+  /* position: absolute; */
   border-radius: 15pt;
 }
 
@@ -214,6 +240,45 @@ select {
 }
 
 
+.popup-container-inactive{
+  display: none
+}
+
+.popup-container{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  bottom:0%;
+  background-color: rgba(200,200,200,0.6);
+}
+
+
+.popup{
+  width:50%;
+  height:50%;
+  position: relative;
+  top:25%;
+  font-size: 45px;
+  margin:auto;
+  background-color: var(--light-panel-color);
+  border-radius: 15px;
+  text-align: center;
+}
+
+#popupClose{
+  position: relative;
+  height: 75px;
+  top:2%;
+  left:2%;
+  line-height: 155%;
+  color:var(--panel-bg-color);
+  background-color: var(--light-panel-selected-color);
+  width:75px;
+  border-radius: 50%;
+}
+
+
+
 #settings{
   height: 10%;
   width:100%;
@@ -227,15 +292,28 @@ select {
 .setting{
   width:50%;
   height: 100%;
+  float:left;
   display: inline-block;
   text-align: center;
   vertical-align:middle;
-
 }
 
 .setting-button{
   background-color: var(--light-panel-color);
   position: relative;
+  top:15%;
+  height:70%;
+  width:60%;
+  line-height: 150%;
+  margin:auto;
+  font-size: 50px;
+  border-radius:15px;
+}
+
+.setting-button-inactive{
+  background-color: var(--light-panel-color);
+  position: relative;
+  display:none;
   top:25%;
   height:50%;
   width:50%;

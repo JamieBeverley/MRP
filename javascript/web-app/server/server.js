@@ -37,7 +37,7 @@ wsServer.on('connection', function(r){
 
 	console.log('sending existing remotes to new client: ');
 	// Tell the client who's connected
-	for (i in clients){
+	for (var i in clients){
 		// TODO maybe handle this better so the participant is encouraged to reload their page when
 		// 			this fails
 
@@ -76,7 +76,8 @@ function onClose(x,r){
 		}
 	}
 	if(r.consented){
-		wsServer.broadcast({type:"removeRemote",uid:r.uid});
+    // [r.uid] - 'exclusionlist - don't send to itself
+		wsServer.broadcast({type:"removeRemote",uid:r.uid}, [r.uid]);
 	}
   delete clients[r.uid];
 }
@@ -101,7 +102,7 @@ function onMessage(message, r){
 			r.consented = true;
 			r.coordinates = msg.coordinates;
 			var newMsg = {type:"newRemote", uid:r.uid, coordinates: msg.coordinates};
-			wsServer.broadcast(JSON.stringify(newMsg));
+			wsServer.broadcast(newMsg);
 		} else{
 			console.log("WARNING invalid location coordinates received from <"+r.uid+"> on consent");
 		}
@@ -115,7 +116,7 @@ function onMessage(message, r){
 	}else if (msg.type =="unconsented"){
 		r.consented = false;
 		var newMsg = {type:"removeRemote",uid:r.uid};
-		wsServer.broadcast(JSON.stringify(newMsg))
+		wsServer.broadcast(JSON.stringify(newMsg),[r.uid])
 	} else {
 		console.log("WARNING unrecognized msg type recevied: "+msg.type)
 	}
@@ -144,19 +145,22 @@ function send(c, msg){
 	}
 }
 
-wsServer.broadcast = function(msg){
+wsServer.broadcast = function(msg, exclusionList=[]){
+  if(typeof(msg) == "string"){
+    msg = JSON.parse(msg);
+  }
 	var uid = msg.uid;
 	var stringMsg = JSON.stringify(msg);
-	for(i in clients){
-		if(clients[i].uid != uid){
-			try{
-				console.log("sending "+msg.type+" to client: "+clients[i].uid)
-				clients[i].send(stringMsg);
-			}catch (e){
-				console.log("!!!!!!!ERROR: could not send msg <"+msg.type+"> to client: <"+i+">");
-				console.log(e);
-			}
-		}
+	for(var i in clients){
+    if(!exclusionList.includes(clients[i].uid)){
+      try{
+        console.log("sending "+msg.type+" to client: "+clients[i].uid)
+        clients[i].send(stringMsg);
+      }catch (e){
+        console.log("!!!!!!!ERROR: could not send msg <"+msg.type+"> to client: <"+i+">");
+        console.log(e);
+      }
+    }
 	}
 }
 
@@ -195,7 +199,7 @@ function authenticate (pwd, r){
 
 function mean(arr){
   var r = 0;
-  for (i in arr){
+  for (var i in arr){
     r += arr[i]
   }
   return r/arr.length

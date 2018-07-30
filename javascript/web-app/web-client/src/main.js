@@ -7,57 +7,12 @@ import VectorSource from 'ol/source/vector'
 import VectorLayer from 'ol/layer/vector'
 import Proj from 'ol/proj' // fromLonLat
 import Select from 'ol/interaction/select'
+import Condition from "ol/events/condition"
 
-import Listen from "./Listen.js"
+import UI from "./UI.js"
+import Audio from "./Audio.js"
 import WebSocket from "./WebSocket.js"
 import Remote from "./Remote.js"
-
-
-WebSocket.init();
-
-
-
-
-
-
-// View selector interaction
-var mapDiv = document.getElementById('map');
-var instructionsDiv = document.getElementById('instructions');
-var visualizationDiv = document.getElementById('visualizations')
-
-var viewInstructions = document.getElementById('view-instructions');
-var viewMap = document.getElementById('view-map');
-var viewVisualization = document.getElementById('view-visualization')
-var view = "instructions"
-
-function switchView(v){
-	viewMap.className = "view-selector"
-	viewInstructions.className = "view-selector"
-	viewVisualization.className = "view-selector"
-
-	mapDiv.style.display = "none";
-	instructionsDiv.style.display = "none";
-	visualizationDiv.style.display = "none";
-
-	if (v=="instructions"){
-		view = v;
-		viewInstructions.className = "view-selector-selected"
-		instructionsDiv.style.display = "inline-block"
-	} else if (v == "visualization"){
-		view = v
-		viewVisualization.className = "view-selector-selected"
-		visualizationDiv.style.display = "inline-block"
-	} else{
-		view = v
-		viewMap.className = "view-selector-selected"
-		mapDiv.style.display = "inline-block"
-	}
-}
-
-viewInstructions.addEventListener('click',function(){switchView("instructions")})
-viewMap.addEventListener('click', function(){switchView("map")})
-viewVisualization.addEventListener('click', function(){switchView('visualization')})
-
 
 var audienceSource = new VectorSource({wrapX: false});
 var audienceLayer = new VectorLayer ({source:audienceSource});
@@ -76,9 +31,49 @@ var map = new Map({
 });
 
 
+map.getView().on('change:resolution', resizeRemotes);
+
+function resizeRemotes(){
+  var resolution = map.getView().getResolution();
+  var radius = 15*resolution;
+  for (var i in Remote.remotes){
+    //TODO some error here, seems like remotes gets out of sync somehow...
+		// ^ think this got sorted somehow...
+    Remote.remotes[i].getGeometry().setRadius(radius);
+  }
+}
+
 // a normal select interaction to handle touch
 var select = new Select({
-  wrapX:false
+  wrapX:false,
+	condition: Condition.click
 });
 
+select.on('select', function (e){
+	console.log(e);
+	console.log(e.selected[0]);
+	if(e.selected[0] && e.selected[0].uid){
+		UI.popupListenMenu(e.selected[0].uid);
+	} else {
+		console.log("ERROR: couldn't find selected remote"+e);
+	}
+})
+
 map.addInteraction(select);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+WebSocket.init(audienceSource);
+// Audio.init();
+UI.init();

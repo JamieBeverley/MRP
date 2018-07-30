@@ -1,3 +1,37 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// HEADS UP THIS IS OLD STUFF, ws stuff is in main.js but should be migrated into this module eventuallly...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 var ws;
 try{
 	ws = new WebSocket("ws://"+location.hostname+":"+location.port, 'echo-protocol');
