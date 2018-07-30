@@ -50,11 +50,6 @@ Audio.selectAndPlayGrain = function (params){
     var dist = 0;
     for(var j in Audio.params){
       dist = dist+Math.abs(params[j]-grain[j])
-      if(isNaN(dist)){
-        console.log("NaN dist:  "+j)
-        console.log("params: "+params[j]);
-        console.log("corpus member: "+grain[j]);
-      }
     }
     if(dist < minDist){
       minDist = dist;
@@ -63,9 +58,7 @@ Audio.selectAndPlayGrain = function (params){
     }
   }
   if(match == undefined){
-
-    console.log("WARNING - undefined match (wtf)");
-    console.log(params);
+    console.log("WARNING - undefined match (uhoh)");
   }
   // TODO - corpus analysis should probably yield relative paths rather than absolute ones...
   match.url = match.url.substring(match.url.indexOf("corpuses"));
@@ -90,7 +83,6 @@ Audio.loadAndPlayBuffer = function (url){
           absn.buffer = x;
           absn.connect(Audio.sonificationGain);
           absn.start();
-          console.log('played grain')
           Audio.buffers[url] = x
         },
         function(err) {

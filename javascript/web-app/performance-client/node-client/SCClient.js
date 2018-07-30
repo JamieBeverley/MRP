@@ -2,7 +2,11 @@ var osc = require ('osc')
 var WebSocket = require('ws')
 var graph = [] // A list of edges
 
+var performanceClient = {};
+
 var ws = new WebSocket.Server({port:9000});
+
+// var ws = new WebSocket("ws://127.0.0.1:9000");
 
 var scOSC = new osc.UDPPort({
 	localAddress: "0.0.0.0",
@@ -15,12 +19,45 @@ scOSC.open();
 
 
 
+scOSC.on('message',function(oscMsg){
+	if (oscMsg.address =="/levels"){
+		var vals = {}
+		for(var i in oscMsg.args){
+			vals[i] = oscMsg.args[i]
+		}
+		var msg = {
+			type:"levels",
+			value:vals
+		}
+		safeSend(msg);
+	} else {
+		console.log("********WARNING: OSC received from SC with no recognized address")
+	}
+})
+
+
+
+
+
+function safeSend (msg){
+	try {
+    if(typeof(msg) != "string"){
+      msg = JSON.stringify(msg);
+    }
+		console.log(msg)
+    performanceClient.send(msg);
+  } catch (e){
+    console.log("ERROR: could not send ws message: "+e)
+  }
+}
+
+
 ws.on('connection', function(r){
   console.log("Connected")
-  r.addEventListener("message",(x)=>onMessage(x,r));
-
-  r.addEventListener("error",(x)=>onError(x,r));
-  r.addEventListener("close",(x)=>onClose(x,r));
+	performanceClient = r;
+  performanceClient.addEventListener("message",(x)=>onMessage(x,r));
+  performanceClient.addEventListener("error",(x)=>onError(x,r));
+  performanceClient.addEventListener("close",(x)=>onClose(x,r));
 })
 
 ws.on('error', function (e){console.log(e)})
@@ -38,8 +75,6 @@ function onClose(x,r){
 function onMessage(message, r){
   var data = message.data; // unclear as to when this is necessary...
   var msg;
-
-
 
   try {
     msg = JSON.parse(data);

@@ -3,64 +3,128 @@ html{
   width:100%;
   height: 100%;
   font-family: Helvetica;
+  position: absolute;
 }
 
 body{
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  position: absolute;
+  background-color: rgb(40,40,40);
 }
 
-img{
+
+
+
+/* img{
   width:150px;
   height:130px;
   pointer-events: none;
   z-index: 2;
   position: absolute;
+} */
+
+#container{
+  position: absolute;
+  top:5%;
+  left:5%;
+  width:90%;
+  height:90%;
+  box-sizing: border-box;
 }
 
 
-#s0{
-  top:-8%;
-  right:26%
+.speaker{
+  width:5%;
+  height: 5%;
+  background-color: white;
+  position: absolute;
+}
+
+.volume-meter{
+  position: absolute;
+  width: 300%;
+  left:100%;
+  height: 100%;
+  background-color: rgba(100,100,255,0.5);
+}
+
+.speaker-icon{
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background-color: rgb(0,0,0)
+}
+
+.volume-meter-vertical{
+  height: 300%;
+  width:100%;
+  transform: rotate(180deg);
+  bottom:100%;
+  left:0%;
+}
+
+.volume-meter-indicator{
+  background-color: rgb(0,130,0);
+  height: 100%;
+  width: 2%;
+}
+
+.volume-meter-indicator-vertical{
+  width:100%;
+  height: 2%;
+}
+
+
+#s0 {
+  top:0%;
+  left:33%;
+  transform: rotate(180deg);
 }
 
 #s1{
-  top:-8%;
-  right:59.5%
+  top:0%;
+  right:33%;
 }
+
 #s2{
-  top:27%;
-  right:91%
+  top:33%;
+  right:0%;
 }
+
 #s3{
-  top:60%;
-  right:91%
+  bottom:33%;
+  right:0%;
 }
 
 #s4{
-  top:91%;
-  right:59.5%
+  bottom:0%;
+  right:33%
 }
+
 #s5{
-  top:91%;
-  right:26%
+  bottom:0%;
+  left:33%;
+  transform: rotate(180deg);
 }
+
 #s6{
-  top:60%;
-  right:-6%
+  bottom:33%;
+  left:0%
 }
 
 #s7{
-  top:27%;
-  right:-6%
+  top:33%;
+  left:0%
 }
 
 #map{
   width: 100%;
   height: 100%;
   z-index: 1;
-  border: 3pt-solid-black;
-  position: absolute;
+  border: 1pt solid black;
+  box-sizing: border-box;
 }
 
 
@@ -149,11 +213,7 @@ select {
   border-radius: 5px;
 }
 
-#container{
-  /* position:relative; */
-  width:50%;
-  height:90%;
-}
+
 
 
 /* #svgContainer{
