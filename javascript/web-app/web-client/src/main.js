@@ -75,5 +75,5 @@ map.addInteraction(select);
 
 
 WebSocket.init(audienceSource);
-// Audio.init();
+Audio.init();
 UI.init();

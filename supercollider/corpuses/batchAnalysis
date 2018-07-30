@@ -2,13 +2,13 @@
 
 if [ $# -eq 0 ]
 then
-  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to supercollider/Units/high-level-features/<basename of folder provided>.json"
+  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to <basename of folder provided>.json"
   exit 1
 fi
 
 if [ $1 == "-h"  ]
 then
-  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to supercollider/Units/high-level-features/<basename of folder provided>.json"
+  echo "Provide a path to a folder containing .wav's to be analyzed. A JSON file will be written to <basename of folder provided>.json"
   exit 1
 fi
 
@@ -27,4 +27,9 @@ done
 echo "Conducting high-level feature analysis"
 
 f=$(basename $1)
-node javascript/high-level-analyze/high-level-analyze.js $1 supercollider/Units/high-level-features/$f.json
+
+node high-level-analyze/high-level-analyze.js $1 $1/$f.json
+
+# uhg windows, it hurts -- UNTESTED HEADS UP
+sed 's/\\\\/\//g' $1/$f.json > tmp1234plzdontbeanotherfile.json
+mv tmp1234plzdontbeanotherfile.json $1/$f.json

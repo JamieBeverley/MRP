@@ -88,7 +88,7 @@ UI.popupListenMenu = function(uid){
   popupMenuDiv.innerHTML += "<div id='subscribeButton'></div>"
 
   var close = document.getElementById('popupClose');
-  close.innerHTML = "X"
+  close.innerHTML = "<div id='popupCloseButton'>X</div>"
   close.addEventListener("click", function(e){
     popupMenuContainerDiv.className = "popup-container-inactive"
   });
@@ -107,18 +107,38 @@ UI.popupListenMenu = function(uid){
       UI.subscribed = uid;
       WebSocket.send({type:"subscribe", uid:uid});
     } else {
+      subscribe.innerHTML = ("subscribe to user: "+uid);
       WebSocket.send({type:"unsubscribe", uid:uid});
-      UI.subscribe = undefined;
+      UI.subscribed = undefined;
     }
-
     // TODO something to change style of subscribed
   })
 
 }
 
 
+// for when this client is resonifying another client's stuff
+// and the other client leaves or stops sharing
+UI.unsharedWhileListening = function (){
+  WebSocket.send({type:"unsubscribe", uid:UI.subscribed});
 
+  popupMenuContainerDiv.className = "popup-container";
+  popupMenuDiv.className = "popup"
+  popupMenuDiv.innerHTML = ""
+  popupMenuDiv.innerHTML = "<div id='popupClose'></div>"
+  popupMenuDiv.innerHTML += "<div id='popupInfo'></div>"
 
+  var close = document.getElementById('popupClose');
+  close.innerHTML = "<div id='popupCloseButton'>X</div>"
+  close.addEventListener("click", function(e){
+    popupMenuContainerDiv.className = "popup-container-inactive"
+  });
+
+  var popupInfo = document.getElementById('popupInfo')
+  popupInfo.innerHTML = "Oops, it seems you were listening to a re-sonification of someone who has now left - please select another user to listen to from the map!"
+
+  UI.subscribed = undefined
+}
 
 function begin (){
   shareDiv.className = "setting-button";
@@ -164,10 +184,10 @@ function toggleListen(){
   UI.muted = !UI.muted;
 	if (UI.muted){
     Audio.sonificationGain.disconnect(Audio.ac)
-    listenDiv.innerHTML="muted"
+    muteDiv.innerHTML="muted"
 	} else{
-    Audio.sonificationGain.connect(Audio.ac)
-    listenDiv.innerHTML = "unmuted"
+    Audio.sonificationGain.connect(Audio.ac.destination)
+    muteDiv.innerHTML = "unmuted"
 	}
 }
 

@@ -3,16 +3,23 @@ import Utilities from "./Utilities.js"
 
 var Audio = {}
 Audio.buffers = {}
-Audio.samplesUrl = window.location.pathname.substring(0,window.location.pathname.lastIndexOf("/"))+"/samples/";
+Audio.samplesUrl = window.location.pathname.substring(0,window.location.pathname.lastIndexOf("/"))+"/corpuses/808/_grains/";
 
 Audio.corpus = undefined
 Audio.ac = undefined;
 
+// sonification
+Audio.sonificationGain = undefined
+
+
 Audio.init = function (){
-  Audio.loadCorpus("corpus.json");
+  Audio.loadCorpus("corpuses/808/_grains/_grains.json");
   try{
     window.AudioContext = window.AudioContext || window.webkitAudioContext;
     Audio.ac = new AudioContext();
+    Audio.sonificationGain = Audio.ac.createGain();
+
+    console.log("Web Audio initialized")
   } catch (e){
     alert("Web Audio Not supported by your browser, please try using a recent version of Firefox or Google Chrome")
   }
@@ -28,21 +35,26 @@ Audio.loadCorpus = function(url){
      if(request.response == null) throw Error("JSON response null in callback of loadAndPlayScore");
      console.log("loaded corpus: " + url);
      Audio.corpus = this.response
+     console.log(Audio.corpus)
  }
   request.send();
 }
 
-// sonification
-Audio.sonificationGain = undefined
+
 
 Audio.selectAndPlayGrain = function (params){
   var minDist = Infinity;
-  match = undefined;
+  var match = undefined;
   for (var i in Audio.corpus){
     var grain = Audio.corpus[i];
     var dist = 0;
-    for(var j in grain){
+    for(var j in Audio.params){
       dist = dist+Math.abs(params[j]-grain[j])
+      if(isNaN(dist)){
+        console.log("NaN dist:  "+j)
+        console.log("params: "+params[j]);
+        console.log("corpus member: "+grain[j]);
+      }
     }
     if(dist < minDist){
       minDist = dist;
@@ -50,19 +62,23 @@ Audio.selectAndPlayGrain = function (params){
       grain.url = i;
     }
   }
-  Audio.playGrain(match);
+  if(match == undefined){
+
+    console.log("WARNING - undefined match (wtf)");
+    console.log(params);
+  }
+  // TODO - corpus analysis should probably yield relative paths rather than absolute ones...
+  match.url = match.url.substring(match.url.indexOf("corpuses"));
+  Audio.loadAndPlayBuffer(match.url);
 }
 
-Audio.playGrain = function (grain){
-  if(Audio.buffers[grain.url]){
+Audio.loadAndPlayBuffer = function (url){
+  if(Audio.buffers[url]){
     var absn = Audio.ac.createBufferSource();
-    absn.buffer = Audio.buffers[grain.url];
+    absn.buffer = Audio.buffers[url];
     absn.connect(Audio.sonificationGain);
     absn.start();
   } else{
-    var request = new XMLHttpRequest();
-
-    var url = Audio.samplesUrl + grain.url;
     var request = new XMLHttpRequest();
     try {
       request.open('GET',url,true);
@@ -74,7 +90,8 @@ Audio.playGrain = function (grain){
           absn.buffer = x;
           absn.connect(Audio.sonificationGain);
           absn.start();
-          Audio.buffers[grain.url] = x
+          console.log('played grain')
+          Audio.buffers[url] = x
         },
         function(err) {
           console.log("error decoding sample " + url);
@@ -136,7 +153,7 @@ Audio.startMachineListening = function (){
   // Try to init web audio things
   try {
     if(!Audio.ac){
-      Audio.ac = new AudioContext
+      Audio.init();
     }
     if(!Audio.meydaGain){
       Audio.meydaGain = Audio.ac.createGain();
@@ -165,16 +182,14 @@ Audio.startMachineListening = function (){
   			Audio.microphoneNode = Audio.ac.createMediaStreamSource(stream);
   			Audio.microphoneNode.connect(Audio.meydaGain);
   			Audio.meydaAnalyzer.start()
-        // Audio.draw();
-          window.requestAnimationFrame(Audio.draw);
+        window.requestAnimationFrame(Audio.draw);
         console.log("Meyda started")
     });
    } else{
      Audio.microphoneNode.disconnect();
      Audio.microphoneNode.connect(Audio.meydaGain);
      Audio.meydaAnalyzer.start()
-     // Audio.draw();
-       window.requestAnimationFrame(Audio.draw);
+    window.requestAnimationFrame(Audio.draw);
      console.log("Meyda started")
    }
 }

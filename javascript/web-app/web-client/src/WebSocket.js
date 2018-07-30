@@ -1,5 +1,7 @@
 import Remote from "./Remote.js"
 import Proj from 'ol/proj'
+import Audio from './Audio.js'
+import UI from './UI.js'
 
 var WS = {}
 WS.ws = {readyState:0};
@@ -25,15 +27,15 @@ WS.init = function (source){
     var msg = parseMessage(message);
     console.log("message: "+msg.type)
     if (msg.type == "params"){
-			// TODO - do something
       sonifyParams(msg);
     } else if (msg.type == "newRemote"){
-      // TODO do something
       console.log("adding new remote");
       new Remote(msg.uid, Proj.fromLonLat(msg.coordinates), source)
     } else if ("removeRemote"){
-      // TODO do something
       console.log("deleting remote: "+Remote.remotes[msg.uid]);
+      if (UI.subscribed==msg.uid){
+        UI.unsharedWhileListening();
+      }
       Remote.remotes[msg.uid].delete();
     } else {
         console.log("WARNING: WS message with unknown type <"+msg.type+"> received.")
@@ -86,7 +88,7 @@ WS.send = function (msg) {
 }
 
 function sonifyParams(params){
-  console.log("sonify..."+params)
+  Audio.selectAndPlayGrain(params.value)
 }
 
 

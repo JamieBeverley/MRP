@@ -265,16 +265,34 @@ select {
   text-align: center;
 }
 
+
 #popupClose{
+  height: 20%
+}
+
+#popupCloseButton{
   position: relative;
-  height: 75px;
-  top:2%;
-  left:2%;
-  line-height: 155%;
+  height: 60px;
+  top:5px;
+  left:5px;
+  line-height: 140%;
   color:var(--panel-bg-color);
   background-color: var(--light-panel-selected-color);
-  width:75px;
+  width:60px;
   border-radius: 50%;
+}
+
+#popupInfo{
+  height: 50%
+}
+
+#subscribeButton{
+  background-color: var(--light-panel-selected-color);
+  width: 55%;
+  margin:auto;
+  height:10%;
+  color: var(--panel-bg-color);
+  border-radius: 15px;
 }
 
 

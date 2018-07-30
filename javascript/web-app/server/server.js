@@ -134,7 +134,7 @@ setInterval(function(){
 			send(clients[i],msg);
 		}
 	}
-},210)
+},95)
 
 function send(c, msg){
 	try{
