@@ -9,6 +9,7 @@ var connectables = {
 var performanceClient = {};
 
 var scIsSynchronized = false;
+var isGraphDump = false; // TODO this is hacky af, do something better
 
 var ws = new WebSocket.Server({port:9000});
 
@@ -36,15 +37,15 @@ scOSC.on('message',function(oscMsg){
 			value:vals
 		}
 		safeSend(msg);
-	} else if (oscMsg.address = "/requestGraph"){
+	} else if (oscMsg.address == "/requestGraph"){
 		scIsSynchronized = false; // if it's requesting a graph dump, chances are it isn't synchronized
 		sendGraphDump();
+	} else if (oscMsg.address == "/confirmGraphDump"){
+		scIsSynchronized = true;
 	}else {
 		console.log("********WARNING: OSC received from SC with no recognized address")
 	}
 })
-
-
 
 
 
@@ -78,6 +79,8 @@ function onError(err,r){
 
 function onClose(x,r){
   console.log('Client disconnected')
+	connectables.items = [];
+	connectables.edges = [];
 }
 
 
@@ -244,18 +247,17 @@ function updateConnections (dag){
 }
 
 
-
-
-
 function sendGraphDump(){
+	isGraphDump = true;
 	for (var i in connectables.items){
 		newConnectable(connectables.items[i]);
 	}
-
 	// Clear 'graph' and re-generate it, sending SC all the appropriate connections
 	var graphTmp = connectables.edges;
 	connectables.edges = [];
 	updateConnections(graphTmp);
+	scSafeSend({address:"/confirmGraphDump",args:[]},3);
+	isGraphDump = false;
 }
 
 function includesConnectable(list, connectable){
@@ -269,7 +271,7 @@ function includesConnectable(list, connectable){
 }
 
 
-function scSafeSend(msg, n=1, isGraphDump=false){
+function scSafeSend(msg, n=1){
 	if ((isGraphDump || scIsSynchronized) && n>0 ){
     try{
       scOSC.send(msg)
@@ -334,3 +336,10 @@ function mean(arr){
   }
   return r/arr.length
 }
+
+
+process.on('SIGINT', function() {
+    console.log("Closing, SC will be instructed to purge its connections");
+		scSafeSend({address:"/purge"},3);
+		setTimeout(()=>{process.exit()},2000);
+});

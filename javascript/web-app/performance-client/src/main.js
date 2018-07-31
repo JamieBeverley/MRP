@@ -118,7 +118,6 @@ select.getFeatures().on(['add', 'remove'], function() {
       cmdBox.appendChild(innerHTML[i])
     }
   } else {
-    console.log("no remote or computation elements")
     cmdBox.hidden = true;
     cmdBox.innerHTML = ""
   }
@@ -249,7 +248,8 @@ map.getViewport().addEventListener('contextmenu', function (evt) {
   var radius = 15*resolution;
   var c = new Computation(coordinate, audienceSource, radius)
   SCClientWS.send({type:"newConnectable",value:c.getGraphData()});
-  c.onComputationChange = function (){
+  // c.onComputationChange = function (){
+  c.onChange = function (){
     SCClientWS.send({type:"updateConnectable", value:this.getGraphData()});
   }
 })
@@ -332,7 +332,9 @@ if (nodeServerWS){
       SCClientWS.send({type:"newConnectable",value:remote.getGraphData()})
 
       // set onChange to tell SC when this remote changes
-      remote.onRemoteChange = function (){
+      // remote.onRemoteChange = function (){
+      remote.onChange = function (){
+
         // TODO @@@@ CONFIRM: I think 'this' refers to the remote here? if not need to change this
         SCClientWS.send({type:"updateConnectable",value:this.getGraphData()})
       }
@@ -371,7 +373,7 @@ if (nodeServerWS){
 
 
 function updateRemoteParams(msg){
-  // @@@***%%% DANGER CHANGE THIS BACKs
-  msg.loudness= msg.rms;
+  // TODO - @@@***%%% DANGER CHANGE THIS BACKs
+  msg.loudness = msg.rms;
   Remote.remotes[msg.uid].setParams(msg);
 }

@@ -1,4 +1,5 @@
 import Connection from "./Connection.js"
+import SCClientWS from "../web-socket/SCClientWS.js"
 import Feature from "ol/feature"
 import Ol from 'ol'
 import Style from 'ol/style/style'
@@ -24,6 +25,8 @@ var Connectable = function(type, coordinate, source, featureOpts, maxInputs) {
   this.type = type;
   this.source = source;
   this.connections = [];
+  Connectable.connectables = Connectable.connectables?Connectable.connectables:[];
+  Connectable.connectables.push(this);
   Connectable.connections = Connectable.connections?Connectable.connections:[];
 };
 
@@ -56,8 +59,6 @@ Connectable.prototype.connect = function (other){
       return other
     }
   }
-  console.log("to maxInputs: "+other.maxInputs)
-  console.log("to connections.len"+other.connections.length);
 
   var otherInputs = other.getInputConnections()
   while (other.maxInputs <= otherInputs.length){
@@ -102,10 +103,18 @@ Connectable.prototype.disconnect = function (other){
 }
 
 // Deletes connections and the implicit object. 3 connections arrays are updated via connections.prototype.delete
+// NOTE - any connectable that overwrites delete should make sure it still does the stuff below:
+//        ie. like delete that object from the Connectable.connectables list, disconnecting things, etc...
 Connectable.prototype.delete = function (){
   this.disconnectAll();
   this.setStyle(new Style({}));
   this.source.removeFeature(this);
+  for(var i in Connectable.connectables){
+    var c = Connectable.connectables[i];
+    if (c.uid == this.uid && c.type == this.type){
+      Connectable.connectables.splice(i,1);
+    }
+  }
   delete this;
   Connectable.printGlobalConnections();
 }
@@ -145,6 +154,14 @@ Connectable.prototype.disconnectAll = function (){
 
 Connectable.prototype.toString = function (){
   return (this.type+": "+this.uid)
+}
+
+
+Connectable.onChange = function(){
+  if(this.type!="speaker"){
+    console.log('probably shouldnt be reaching this condition');
+  }
+  SCClientWS.send({type:"updateConnectable", value:this.getGraphData()});
 }
 
 // Convenience for printing

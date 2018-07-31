@@ -1,15 +1,23 @@
+import Connection from "../connectables/Connection.js"
+import Connectable from "../connectables/Connectable.js"
+
 window.WebSocket = window.WebSocket || window.MozWebSocket;
 
 var SCClientWS = {}
-SCClientWS.ws = {readyState:0};
+SCClientWS.connected = false
 
 SCClientWS.initSCClientWS = function (){
 
   var connectToNodeSCClientWS = function(){
-      if(SCClientWS.ws.readyState!= 1){
+      if(!SCClientWS.connected){
         console.log("connecting to sc client ws")
         try{
           SCClientWS.ws = new WebSocket("ws://"+location.hostname+":9000", 'echo-protocol')
+          SCClientWS.ws.onopen = onopen
+          // Try to reconnect if error or close
+          SCClientWS.ws.onclose = function(){SCClientWS.connected = false; connectToNodeSCClientWS()}
+          SCClientWS.ws.onerror = function(){SCClientWS.connected = false; console.log("ws error.. refresh?")};
+          SCClientWS.ws.addEventListener("message", SCClientWS.onMessage);
         } catch (e){
           console.log("error connecting to sc client")
         }
@@ -17,18 +25,21 @@ SCClientWS.initSCClientWS = function (){
       }
   };
   connectToNodeSCClientWS();
-
-  SCClientWS.ws.onopen = onopen
-  // Try to reconnect if error or close
-  SCClientWS.ws.onclose = connectToNodeSCClientWS;
-  SCClientWS.ws.onerror = connectToNodeSCClientWS;
-  SCClientWS.ws.addEventListener("message", SCClientWS.onMessage);
 }
 
 function onopen (){
+  SCClientWS.connected = true;
   console.log("SC ws connection established")
+  for (var i in Connectable.connectables){
+    SCClientWS.send({type:"newConnectable", value:Connectable.connectables[i].getGraphData()});
+  }
 
-  // Do something to tell node about current state of connectables + connections
+  var dag = Connection.getConnectionsDAG(); // [{from:..., to:...}] where from and to are from 'getGraphData'
+  var msg = {
+    type: "updateConnections",
+    value: dag
+  };
+  SCClientWS.send(msg);
 }
 
 SCClientWS.onMessage = function(message){
@@ -47,14 +58,10 @@ SCClientWS.onMessage = function(message){
   }
 }
 
-
-
-SCClientWS.send = function (msg) {
-  if(SCClientWS.ws.readyState == 1){
+SCClientWS.send = function (m) {
+  if(SCClientWS.connected){
     try {
-      if(typeof(msg) != "string"){
-        msg = JSON.stringify(msg);
-      }
+      var msg = typeof(m)=="string"?m:JSON.stringify(m);
       SCClientWS.ws.send(msg);
     } catch (e){
       var m = typeof(msg)=='string'?msg:msg.type
@@ -62,7 +69,7 @@ SCClientWS.send = function (msg) {
       console.log(e);
     }
   } else{
-    console.log("warning: sc ws connection not established")
+    console.log("warning: sc ws not connected")
   }
 }
 

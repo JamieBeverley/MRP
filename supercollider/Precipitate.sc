@@ -26,27 +26,23 @@ Precipitate {
 
 	*boot{
 
-		|device, outChannels=2, nodeOutIP = "127.0.0.1", nodeOutPort=10000, nodeRecvPort=10001, corpusJsonPath|
+		|device, nodeOutIP = "127.0.0.1", nodeOutPort=10000, nodeRecvPort=10001, corpusJsonPath|
 
 		Precipitate.nodeRecvPort = nodeRecvPort;
 		Precipitate.nodeOut = NetAddr.new(nodeOutIP, nodeOutPort);
 
-		Precipitate.nodeOut.sendMsg("/requestGraph");
-
 		Precipitate.speakers = [];
-		outChannels.do{|i|Precipitate.speakers = Precipitate.speakers.add(Speaker(i));};
+		// outChannels.do{|i|Precipitate.speakers = Precipitate.speakers.add(Speaker(i));};
 
 		Precipitate.connectables = speakers;
 		Precipitate.connections = [];
 
 		if(device.notNil,{Server.default.options.device = device;});
 		Server.default.options.numBuffers = 1024*8;
-		Server.default.options.numOutputBusChannels = outChannels;
+		Server.default.options.numOutputBusChannels = 8;
 
 		Server.default.waitForBoot({
 			var cmdPFunc,oscCmdPFunc;
-
-
 
 			Precipitate.loadSynths;
 
@@ -77,6 +73,7 @@ Precipitate {
 						features["clarity"] = msg[12].asFloat;
 						features["strength"] = msg[13].asFloat;
 						features["turbidity"] = msg[14].asFloat;
+						tolerance.postln;
 
 						match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
 						match.play(out:out,amp:amp,attack:attack,release:release);
@@ -90,6 +87,8 @@ Precipitate {
 			oscCmdPFunc = {Precipitate.oscDefs()};
 			oscCmdPFunc.value();
 			CmdPeriod.add(oscCmdPFunc);
+
+			Precipitate.nodeOut.sendMsg("/requestGraph");
 		});
 
 	}
@@ -144,6 +143,26 @@ Precipitate {
 
 	*oscDefs{
 
+		OSCdef(\purge,{
+			Precipitate.connectables.do{
+				|i|
+				i.pattern.stop;
+			};
+			Precipitate.connectables = [];
+			Precipitate.connections.do{
+				|i|
+				i[0].disconnect(i[1]);
+			};
+			Precipitate.connections = [];
+			"Connections purged by instruction of SC web client".postln;
+		},path:"/purge",recvPort:Precipitate.nodeRecvPort);
+
+		OSCdef(\confirmGraphDump,{
+			|msg|
+			"Graph dump received".postln;
+			Precipitate.nodeOut.sendMsg("/confirmGraphDump");
+		},path:"/confirmGraphDump",recvPort:Precipitate.nodeRecvPort);
+
 		OSCdef(\newConnectable,{
 			|msg|
 			var connectable;
@@ -155,6 +174,7 @@ Precipitate {
 			if(msg[1].asString.toLower == "remote",{
 				connectable = Remote.parseMessage(msg);
 			});
+			if(msg[1].asString.toLower == "speaker",{connectable = Speaker(msg[2].asFloat,[])});
 
 			Precipitate.connectables = Precipitate.connectables.add(connectable);
 

@@ -33,15 +33,16 @@ var Computation = function (coordinate, source, initialRadius, computation){
 
 Computation.prototype = Object.create(Connectable.prototype,{constructor: Computation});
 
-// Pseudo event system - this will be called anytime this.computation is changed by
-// 'setComputation'
-Computation.prototype.onComputationChange = function(){
-  console.log("changed:  "+this.toString());
-}
+// // Pseudo event system - this will be called anytime this.computation is changed by
+// // 'setComputation'
+// Computation.prototype.onComputationChange = function(){
+//   console.log("changed:  "+this.toString());
+// }
 
 Computation.prototype.setComputation = function (computation){
   this.computation = computation;
-  this.onComputationChange();
+  this.onChange();
+  // this.onComputationChange();
 }
 
 Computation.prototype.setRadius = function (radius){
@@ -109,7 +110,8 @@ Computation.prototype.getComputationSpecHTML = function(){
     // Bubble up event
     var closure = this
     initialVal.onParamsChange = function(){
-      closure.onComputationChange();
+      // closure.onComputationChange();
+      closure.onChange();
     }
     this.setComputation({type:this.computation.type,value:initialVal})
     var html = this.computation.value.getSetterHTML();
@@ -181,7 +183,7 @@ Computation.getEmptyComputationObj = function(type){
   if (type == "reweight"){
     r.value = new Params(1,1,1,1,1,1);
     // Bubble up change events
-    r.value.onParamsChange = function(){this.onComputationChange();}
+    r.value.onParamsChange = function(){this.onChange();} //this.onComputationChange();}
   } else if (type =="sample and hold"){
     r.value = 0;
   } else if (type == "grain randomness"){

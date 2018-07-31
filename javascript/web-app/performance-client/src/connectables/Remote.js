@@ -26,7 +26,8 @@ var Remote = function (uid, coordinate, source){
     // Call whatever params would regularly have called
     f();
     // call the remote's onchange func
-    closure.onRemoteChange();
+    // closure.onRemoteChange();
+    closure.onChange();
   }
   Remote.remotes = Remote.remotes?Remote.remotes:{};
   Remote.remotes[this.uid] = this
@@ -37,9 +38,15 @@ Remote.prototype = Object.create(Connectable.prototype,{constructor: Remote});
 
 //Overwrite inherited delete func (... that delete func should probably just be dispoed of)
 Remote.prototype.delete = function (){
-  delete Remote.remotes[this.uid]
+  delete Remote.remotes[this.uid];
   this.disconnectAll();
   this.source.removeFeature(this);
+  for(var i in Connectable.connectables){
+    var c = Connectable.connectables[i];
+    if(c.uid == this.uid && c.type ==this.type){
+      Connectable.connectables.splice(i,1);
+    }
+  }
   delete this;
 }
 
@@ -49,9 +56,9 @@ Remote.prototype.setParams = function (params){
   //       by this.params.onParamsChange (see constructor above)
 };
 
-Remote.prototype.onRemoteChange= function(){
-  console.log("changed: "+this.toString());
-}
+// Remote.prototype.onRemoteChange= function(){
+//   console.log("changed: "+this.toString());
+// }
 
 Remote.prototype.subscribe = function(){this.subscribe = true};
 Remote.prototype.getInfoHTML = function (){

@@ -70,7 +70,7 @@ function onClose(x,r){
   // TODO Note: things could go wrong here if in some other thread clients[r.idnetifier] is being accessed.. maybe need a lock on clients or something
   console.log('Client left: '+r.uid)
 	for(var i in clients){
-		var index = clients[i].subscriptions.indexOf(r.uid)
+		var index = clients[i].subscriptions.findIndex((f)=> {return f.uid == r.uid})
 		if (index > -1){
 			clients[i].subscriptions.splice(index,1);
 		}
@@ -107,14 +107,21 @@ function onMessage(message, r){
 			console.log("WARNING invalid location coordinates received from <"+r.uid+"> on consent");
 		}
 	} else if (msg.type == "subscribe"){
-		r.subscriptions.push(msg.uid);
+		r.subscriptions.push(clients[msg.uid]);
 	} else if (msg.type == "unsubscribe"){
-		var index = r.subscriptions.indexOf(msg.uid);
+		var index = r.subscriptions.findIndex((f)=>{return f.uid == msg.uid});
 		if (index > -1) {
 			r.subscriptions.splice(index, 1);
 		}
 	}else if (msg.type =="unconsented"){
 		r.consented = false;
+    for (var i in clients){
+      for (var j in clients[i].subscriptions){
+        if(clients[i].subscriptions[j].uid == r.uid){
+          clients[i].subscriptions.splice(j,1);
+        }
+      }
+    }
 		var newMsg = {type:"removeRemote",uid:r.uid};
 		wsServer.broadcast(JSON.stringify(newMsg),[r.uid])
 	} else {
@@ -122,16 +129,20 @@ function onMessage(message, r){
 	}
 }
 
-
 setInterval(function(){
 	for (var i in clients){
 		for (var j in clients[i].subscriptions){
-			var val = getParams(clients[clients[i].subscriptions[j]]);
-			var msg = {
-				type:"params",
-				value: val
-			}
-			send(clients[i],msg);
+      if(clients[i].subscriptions[j].consented){
+  			var val = getParams(clients[clients[i].subscriptions[j].uid]);
+  			var msg = {
+  				type:"params",
+  				value: val
+  			}
+  			send(clients[i],msg);
+      } else{
+        // remove from subscriptions if not consented
+        clients[i].subscriptions.splice(j,1);
+      }
 		}
 	}
 },95)
