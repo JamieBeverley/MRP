@@ -12,7 +12,8 @@
 
 Precipitate {
 
-	classvar <>nodePort;
+	classvar <>nodeRecvPort;
+	classvar <>nodeOut;
 	classvar <>speakers;
 	classvar <>connectables;
 	classvar <>connections;
@@ -25,9 +26,13 @@ Precipitate {
 
 	*boot{
 
-		|device, outChannels=2, nodePort=10001, corpusJsonPath|
+		|device, outChannels=2, nodeOutIP = "127.0.0.1", nodeOutPort=10000, nodeRecvPort=10001, corpusJsonPath|
 
-		Precipitate.nodePort = nodePort;
+		Precipitate.nodeRecvPort = nodeRecvPort;
+		Precipitate.nodeOut = NetAddr.new(nodeOutIP, nodeOutPort);
+
+		Precipitate.nodeOut.sendMsg("/requestGraph");
+
 		Precipitate.speakers = [];
 		outChannels.do{|i|Precipitate.speakers = Precipitate.speakers.add(Speaker(i));};
 
@@ -40,26 +45,10 @@ Precipitate {
 
 		Server.default.waitForBoot({
 			var cmdPFunc,oscCmdPFunc;
-			~outBus = Bus.audio(Server.default,Server.default.options.numOutputBusChannels);
 
-			SynthDef(\grain,{
-				|amp,out=0,spectralCentroid=0,loudness=0,pitchedness=0,clarity=0,strength=0,turbidity=0,corpus=0,attack=0.01,release=0.01,tolerance=0.05|
 
-				SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",[corpus,tolerance,out,amp,attack,release,loudness,spectralCentroid,pitchedness,clarity,strength,turbidity]);
-				// SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",0.1!15);
-				Out.ar(0,EnvGen.ar(Env.perc(),doneAction:2)*0);
-			}).add;
 
-			SynthDef(\out,{
-				|lpf=22000, hpf=10, reverb=0,db=0,hrq=1,lrq=1,room=0.3|
-				var audio = In.ar(~outBus,Server.default.options.numOutputBusChannels)*(db.dbamp);
-				audio = FreeVerb.ar(audio,mix:Clip.kr(reverb,0,1),room:Clip.kr(room,0,1),damp:0.9);
-				audio = LPF.ar(audio, Clip.kr(lpf,10,22000));//,1/(resonance.clip(0.0001,1)));
-				audio = HPF.ar(audio,Clip.kr(hpf,10,22000));
-				audio = Compander.ar(audio,audio,-30.dbamp,slopeAbove:1/2.5,mul:3.dbamp);
-				audio = Compander.ar(audio,audio,thresh:-1.dbamp,slopeAbove:1/20); // limiter...
-				Out.ar(0,audio);
-			}).add;
+			Precipitate.loadSynths;
 
 			Grain.readGrainsFromJSON(corpusJsonPath,"c1");
 
@@ -91,7 +80,7 @@ Precipitate {
 
 						match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
 						match.play(out:out,amp:amp,attack:attack,release:release);
-					},"/grain",recvPort:NetAddr.langPort).add;
+					},"/grain",recvPort:NetAddr.langPort);
 				}).play;
 			};
 
@@ -105,7 +94,53 @@ Precipitate {
 
 	}
 
+	*loadSynths{
+		if (~outBus.isNil,{~outBus = Bus.audio(Server.default,Server.default.options.numOutputBusChannels)});
 
+		SynthDef(\grain,{
+			|amp,out=0,spectralCentroid=0,loudness=0,pitchedness=0,clarity=0,strength=0,turbidity=0,corpus=0,attack=0.01,release=0.01,tolerance=0.05|
+
+			SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",[corpus,tolerance,out,amp,attack,release,loudness,spectralCentroid,pitchedness,clarity,strength,turbidity]);
+			// SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",0.1!15);
+			Out.ar(0,EnvGen.ar(Env.perc(),doneAction:2)*0);
+		}).add;
+
+		SynthDef(\out,{
+			|lpf=22000, hpf=10, reverb=0,db=0,hrq=1,lrq=1,room=0.3|
+			var audio = In.ar(~outBus,Server.default.options.numOutputBusChannels)*(db.dbamp);
+			audio = FreeVerb.ar(audio,mix:Clip.kr(reverb,0,1),room:Clip.kr(room,0,1),damp:0.9);
+			audio = LPF.ar(audio, Clip.kr(lpf,10,22000));//,1/(resonance.clip(0.0001,1)));
+			audio = HPF.ar(audio,Clip.kr(hpf,10,22000));
+			audio = Compander.ar(audio,audio,-30.dbamp,slopeAbove:1/2.5,mul:3.dbamp);
+			audio = Compander.ar(audio,audio,thresh:-1.dbamp,slopeAbove:1/20); // limiter...
+			Out.ar(0,audio);
+		}).add;
+
+		OSCdef(\playGrain,{
+			|msg|
+			var features = Dictionary.new();
+			var corpus = msg[3];
+			var tolerance = msg[4];
+			var out = msg[5];
+			var amp = msg[6];
+
+			var attack = msg[7];
+			var release = msg[8];
+			var match;
+
+			features["rms"] = (msg[9].asFloat)/0.2; // TODO - this scaling is kind of custom
+			features["spectralCentroid"] = msg[10].asFloat;
+			features["pitch"] = msg[11].asFloat;
+			features["clarity"] = msg[12].asFloat;
+			features["strength"] = msg[13].asFloat;
+			features["turbidity"] = msg[14].asFloat;
+			tolerance.postln;
+
+			match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
+			match.play(out:out,amp:amp,attack:attack,release:release);
+		},"/grain",recvPort:NetAddr.langPort)
+
+	}
 
 	*oscDefs{
 
@@ -124,7 +159,7 @@ Precipitate {
 			Precipitate.connectables = Precipitate.connectables.add(connectable);
 
 			("new: "+connectable.type++":"++connectable.uid).postln;
-		},path:"/newConnectable",recvPort:Precipitate.nodePort);
+		},path:"/newConnectable",recvPort:Precipitate.nodeRecvPort);
 
 		OSCdef(\removeConnectable,{
 			|msg|
@@ -144,7 +179,7 @@ Precipitate {
 			});*/
 
 			("remove"+type++":"++uid).postln;
-		},path:"/removeConnectable",recvPort:Precipitate.nodePort);
+		},path:"/removeConnectable",recvPort:Precipitate.nodeRecvPort);
 
 
 		OSCdef(\newConnection,{
@@ -173,7 +208,7 @@ Precipitate {
 				Precipitate.connections = Precipitate.connections.add([from,to]);
 				("new connection:  "++fromType++":"++fromUid++"->"++toType++":"++toUid).postln;
 			});
-		},path:"/newConnection",recvPort: Precipitate.nodePort);
+		},path:"/newConnection",recvPort: Precipitate.nodeRecvPort);
 
 		OSCdef(\removeConnection,{
 			|msg|
@@ -216,7 +251,7 @@ Precipitate {
 
 
 			("remove connection:  "++fromType++":"++fromUid++"->"++toType++":"++toUid).postln;
-		},path:"/removeConnection",recvPort: Precipitate.nodePort);
+		},path:"/removeConnection",recvPort: Precipitate.nodeRecvPort);
 
 		OSCdef(\updateConnectable,{
 			|msg|
@@ -230,7 +265,7 @@ Precipitate {
 				"could not find connectable to update".warn;
 			});
 
-		},path:"/updateConnectable",recvPort: Precipitate.nodePort);
+		},path:"/updateConnectable",recvPort: Precipitate.nodeRecvPort);
 
 
 	}

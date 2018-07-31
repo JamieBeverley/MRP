@@ -18,13 +18,17 @@ SCClientWS.initSCClientWS = function (){
   };
   connectToNodeSCClientWS();
 
-  SCClientWS.ws.onopen = function (){
-    console.log("SC connection opened");
-  }
+  SCClientWS.ws.onopen = onopen
   // Try to reconnect if error or close
   SCClientWS.ws.onclose = connectToNodeSCClientWS;
   SCClientWS.ws.onerror = connectToNodeSCClientWS;
   SCClientWS.ws.addEventListener("message", SCClientWS.onMessage);
+}
+
+function onopen (){
+  console.log("SC ws connection established")
+
+  // Do something to tell node about current state of connectables + connections
 }
 
 SCClientWS.onMessage = function(message){
@@ -46,13 +50,19 @@ SCClientWS.onMessage = function(message){
 
 
 SCClientWS.send = function (msg) {
-  try {
-    if(typeof(msg) != "string"){
-      msg = JSON.stringify(msg);
+  if(SCClientWS.ws.readyState == 1){
+    try {
+      if(typeof(msg) != "string"){
+        msg = JSON.stringify(msg);
+      }
+      SCClientWS.ws.send(msg);
+    } catch (e){
+      var m = typeof(msg)=='string'?msg:msg.type
+      console.log("ERROR: could not send sc ws message: "+m);
+      console.log(e);
     }
-    SCClientWS.ws.send(msg);
-  } catch (e){
-    console.log("ERROR: could not send sc ws message: "+e)
+  } else{
+    console.log("warning: sc ws connection not established")
   }
 }
 
@@ -67,8 +77,6 @@ function handlLevels(levels){
     } else{
       meter.style.height = percent+"%";
     }
-
-
 
     if(percent>=100){
       meter.style.backgroundColor = "rgb(130,0,0)"

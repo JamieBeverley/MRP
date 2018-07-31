@@ -1,6 +1,5 @@
 var osc = require ('osc')
 var WebSocket = require('ws')
-var graph = {[]} // A list of edges
 
 var connectables = {
 	'graph':[],
@@ -121,10 +120,21 @@ function deleteConnectable(connectable){
 		args:[connectable.type, connectable.uid]
 	};
 	scSafeSend(msg,3);
+
+	// Remove from unconnecteds if it's in there...
+	// NOTE - don't have to do this for the graph since the
+	// 				graph gets updated immediately when the browser sends an 'updateConnections
+	for(var i in connectables.unconnected){
+		var j = connectables.unconnected[i];
+		if(j.uid == connectable.uid && j.type == connectable.type){
+			connectables.unconnected.splice(i,1);
+		}
+	}
 }
 
 function newConnectable(connectable){
 	var r = [connectable.type, connectable.uid]
+	connectables.unconnected.push(connectable);
   for (var i in connectable.value){
     r.push(i);
     if (typeof(connectable.value[i])== "object"){
@@ -141,14 +151,27 @@ function newConnectable(connectable){
 }
 
 function updateConnectable(connectable){
+	var isInGraph = false;
   // This is kind of ugly but graph probably won't get big enough for this to be a problem
-  for (var i in graph){
-    for (var j in graph[i]){
-      if(graph[i][j].type == connectable.type && graph[i][j].uid == connectable.uid){
-        graph[i][j] = connectable;
+  for (var i in connectables.graph){
+    for (var j in connectables.graph[i]){
+      if(connectables.graph[i][j].type == connectable.type && connectables.graph[i][j].uid == connectable.uid){
+        connectables.graph[i][j] = connectable;
+				isInGraph = true;
       }
     }
   }
+	if (!isInGraph){
+		for (var i in connectables.unconnected){
+			if (connectables.unconnected[i].uid==connectable.uid && connectables.unconnected.type == connectable.type){
+				connectables.unconnected[i] = connectable;
+			} else{
+				console.log("WARNING CONNECTABLE NOT FOUND IN GRAPH OR UNCONNECTEDS")
+				return;
+			}
+		}
+	}
+
   var r = [connectable.type, connectable.uid]
   for (var i in connectable.value){
     r.push(i);
@@ -171,7 +194,7 @@ function updateConnections (dag){
   var deleteIndexes = [];
 
   // Remove deleted edges
-  for (var i in graph){
+  for (var i in connectables.graph){
     var exists = false;
     for (var j in dag){
       // TODO - not sure why I made this switch to arrays instead of JSON objects here
@@ -194,18 +217,28 @@ function updateConnections (dag){
   // Add new connections
   for (var i in dag){
     var exists = false;
+		var from = dag[i][0];
+		var to = dag[i][1]
     // TODO - maybe connections should have uids so we don't have to iterate through graph
     //        to find if connection exists
-    for (var j in graph){
-      if (graph[j][0].uid == dag[i][0].uid && graph[j][1].uid == dag[i][1].uid){
+    for (var j in connectables.graph){
+			if(equals(connectables.graph[j][0], from) && equals(connectables.graph[j][1], to)){
         exists = true;
         break;
       }
     }
     if (!exists){
       newConnections.push(dag[i]);
-      graph.push(dag[i])
-    }
+			for(var j in connectables.unconnected){
+				var c = connectables.unconnected[c];
+				if(equals(connectables.unconnected[j], dag[i][0])){
+					connectables.unconnected.splice(j,1)
+				} else if( equals(connectables.unconnected[j], dag[i][1]) ){
+					connectables.unconnected.splice(j,1)
+				}
+			}
+      connectables.graph.push(dag[i])
+    }// new edge
   }
 
   // send new connections
@@ -214,11 +247,22 @@ function updateConnections (dag){
 		var to = [newConnections[i][1].type,newConnections[i][1].uid]
 
     if (from != undefined && to != undefined){
+
+			// remove connectables involved in newConnection from the list of
+			// unconnected connectables.
+			for(var j in connectables.unconnected){
+				var c = connectables.unconnected[c];
+				if(c.uid == from[1] && c.type == from[0]){
+					connectables.unconnected.splice(j,1)
+				}	else if (c.uid == to[1] && c.type == to[0]){
+					connectables.unconnected.splice(j,1)
+				}
+			}
+
       var msg = {
         address:"/newConnection",
         args: from.concat(to)
       }
-      // a bit of redundancy for safety (would suck if dag's fall out of sync)
       scSafeSend(msg,3);
     }
   }
@@ -235,9 +279,13 @@ function updateConnections (dag){
     scSafeSend(msg,3);
   }
 
-	console.log("new graph: "+graph);
+	console.log("new graph: "+connectables.graph);
 }
 
+
+function equals(c1,c2){
+	return (c1.uid==c2.uid) && (c1.type == c2.type)
+}
 
 // takes the json object, puts it into an array that can be added to an osc msg to SC
 function connectableToOscArg (connectable){
@@ -267,8 +315,8 @@ function connectableToOscArg (connectable){
 function sendGraphDump(){
 	var alreadyUpdated = [];
 	// Send all new connections
-	for (var i in graph){
-		var connection = graph[i];
+	for (var i in connectables.graph){
+		var connection = connectables.graph[i];
 		if (!includesConnectable(alreadyUpdated,connection[0])){
 			newConnectable(connection[0]);
 			alreadyUpdated.push(connection[0])
@@ -280,8 +328,8 @@ function sendGraphDump(){
 	}
 
 	// Clear 'graph' and re-generate it, sending SC all the appropriate connections
-	var graphTmp = graph;
-	graph = [];
+	var graphTmp = connectables.graph;
+	connectables.graph = [];
 	updateConnections(graphTmp);
 }
 

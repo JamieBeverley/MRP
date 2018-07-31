@@ -1,10 +1,9 @@
 var osc = require ('osc')
 var WebSocket = require('ws')
-var graph = {[]} // A list of edges
 
 var connectables = {
-	'graph':[],
-	'unconnected':[]
+	'edges':[],
+	'items':[]
 }
 
 var performanceClient = {};
@@ -99,7 +98,6 @@ function onMessage(message, r){
 	if (msg.type == "updateConnections"){
     console.log("connections update: ");
     updateConnections(msg.value);
-    printDAG(msg.value);
 	} else if (msg.type == "updateConnectable") {
     var uid = msg.value.uid;
     var type = msg.value.type;
@@ -121,9 +119,20 @@ function deleteConnectable(connectable){
 		args:[connectable.type, connectable.uid]
 	};
 	scSafeSend(msg,3);
+	// Remove from unconnecteds if it's in there...
+	// NOTE - don't have to do this for the graph since the
+	// 				graph gets updated immediately when the browser sends an 'updateConnections
+	for(var i in connectables.items){
+		var j = connectables.items[i];
+		if(equals(connectable, j)){
+			connectables.items.splice(i,1);
+		}
+	}
 }
 
 function newConnectable(connectable){
+	connectables.items.push(connectable);
+
 	var r = [connectable.type, connectable.uid]
   for (var i in connectable.value){
     r.push(i);
@@ -141,14 +150,13 @@ function newConnectable(connectable){
 }
 
 function updateConnectable(connectable){
-  // This is kind of ugly but graph probably won't get big enough for this to be a problem
-  for (var i in graph){
-    for (var j in graph[i]){
-      if(graph[i][j].type == connectable.type && graph[i][j].uid == connectable.uid){
-        graph[i][j] = connectable;
-      }
-    }
-  }
+	for (var i in connectables.items){
+		var c = connectables.items[i]
+		if(equals(connectable,c)){
+			connectables.items[i] = connectable
+		}
+	}
+
   var r = [connectable.type, connectable.uid]
   for (var i in connectable.value){
     r.push(i);
@@ -171,24 +179,22 @@ function updateConnections (dag){
   var deleteIndexes = [];
 
   // Remove deleted edges
-  for (var i in graph){
+  for (var i in connectables.edges){
     var exists = false;
     for (var j in dag){
-      // TODO - not sure why I made this switch to arrays instead of JSON objects here
-      //       .from and .to is nicer than [0] and [1]
-      if(graph[i][0].uid == dag[j][0].uid && graph[i][1].uid == dag[j][1].uid){
-        exists = true;
-      }
+			if(connectionEquals(connectables.edges[i], dag[j])){
+				exists = true;
+			}
     }
     // connection in graph not in new dag - flag it for deletion
     if (!exists){
-      deletedConnections.push(graph[i]);
+      deletedConnections.push(connectables.edges[i]);
       deleteIndexes.push(i)
     }
   }
 
   for (var i in deleteIndexes){
-    graph.splice(deleteIndexes[i],1);
+    connectables.edges.splice(deleteIndexes[i],1);
   }
 
   // Add new connections
@@ -196,92 +202,59 @@ function updateConnections (dag){
     var exists = false;
     // TODO - maybe connections should have uids so we don't have to iterate through graph
     //        to find if connection exists
-    for (var j in graph){
-      if (graph[j][0].uid == dag[i][0].uid && graph[j][1].uid == dag[i][1].uid){
+    for (var j in connectables.edges){
+			if(connectionEquals(connectables.edges[j], dag[i])){
         exists = true;
         break;
       }
     }
     if (!exists){
       newConnections.push(dag[i]);
-      graph.push(dag[i])
-    }
+      connectables.edges.push(dag[i])
+    }// new edge
   }
 
   // send new connections
   for (var i in newConnections){
-		var from = [newConnections[i][0].type,newConnections[i][0].uid]
-		var to = [newConnections[i][1].type,newConnections[i][1].uid]
-
+		var from = newConnections[i].from;
+		var to = newConnections[i].to;
     if (from != undefined && to != undefined){
       var msg = {
         address:"/newConnection",
-        args: from.concat(to)
+        args: [from.type,from.uid, to.type, to.uid]
       }
-      // a bit of redundancy for safety (would suck if dag's fall out of sync)
       scSafeSend(msg,3);
-    }
+    } else{
+			console.log("warning: to or from was undefined, did not send connection update...")
+		}
   }
 
   // send delete connections
   for (var i in deletedConnections){
-    var from = [deletedConnections[i][0].type,deletedConnections[i][0].uid]
-    var to = [deletedConnections[i][1].type, deletedConnections[i][1].uid]
+		var from = deletedConnections[i].from;
+		var to = deletedConnections[i].to;
     var msg = {
       address: "/removeConnection",
-      args: from.concat(to)
+      args: [from.type, from.uid, to.type, to.uid]
     }
 		console.log("sending removeConnection")
     scSafeSend(msg,3);
   }
-
-	console.log("new graph: "+graph);
+	printDAG(connectables.edges);
 }
 
 
-// takes the json object, puts it into an array that can be added to an osc msg to SC
-function connectableToOscArg (connectable){
-  var r = [connectable.type, connectable.uid];
-  if (connectable.type == "remote"){
-    // connectable.value is a Params json object
-    for (var i in connectable.value){
-      r.push(i);
-      r.push(connectable.value[i])
-    }
-  } else if (connectable.type == "computation") {
-    r.push(connectable.value.type); //
-    for (var i in connectable.value.value){
-      r.push(i);
-      r.push(connectable.value.value[i])
-    }
-  } else if (connectable.type == "speaker"){
-    // don't need anymore info here...
-  } else {
-    console.log("WARNING unknown connectable type, unable to generate osc arg: "+ connectable.type);
-    return undefined
-  }
-  return r
-}
+
 
 
 function sendGraphDump(){
-	var alreadyUpdated = [];
-	// Send all new connections
-	for (var i in graph){
-		var connection = graph[i];
-		if (!includesConnectable(alreadyUpdated,connection[0])){
-			newConnectable(connection[0]);
-			alreadyUpdated.push(connection[0])
-		}
-		if(!includesConnectable(alreadyUpdated, connection[1])){
-			newConnectable(connection[1]);
-			alreadyUpdated.push(connection[1])
-		}
+	for (var i in connectables.items){
+		newConnectable(connectables.items[i]);
 	}
 
 	// Clear 'graph' and re-generate it, sending SC all the appropriate connections
-	var graphTmp = graph;
-	graph = [];
+	var graphTmp = connectables.edges;
+	connectables.edges = [];
 	updateConnections(graphTmp);
 }
 
@@ -310,12 +283,44 @@ function scSafeSend(msg, n=1, isGraphDump=false){
 
 
 
+function equals(c1,c2){
+	return (c1.uid==c2.uid) && (c1.type == c2.type)
+}
+
+function connectionEquals(c1, c2){
+	return equals(c1.from,c2.from) && equals(c1.to,c2.to)
+}
+
+// takes the json object, puts it into an array that can be added to an osc msg to SC
+function connectableToOscArg (connectable){
+  var r = [connectable.type, connectable.uid];
+  if (connectable.type == "remote"){
+    // connectable.value is a Params json object
+    for (var i in connectable.value){
+      r.push(i);
+      r.push(connectable.value[i])
+    }
+  } else if (connectable.type == "computation") {
+    r.push(connectable.value.type); //
+    for (var i in connectable.value.value){
+      r.push(i);
+      r.push(connectable.value.value[i])
+    }
+  } else if (connectable.type == "speaker"){
+    // don't need anymore info here...
+  } else {
+    console.log("WARNING unknown connectable type, unable to generate osc arg: "+ connectable.type);
+    return undefined
+  }
+  return r
+}
+
 
 function printDAG(dag){
   console.log("_________________")
   for(var i in dag){
-    var from = dag[i][0];
-    var to = dag[i][1];
+    var from = dag[i].from;
+    var to = dag[i].to;
     console.log("From: "+from.type+":"+from.uid+"  To: "+to.type+":"+to.uid);
   }
   console.log("_________________")

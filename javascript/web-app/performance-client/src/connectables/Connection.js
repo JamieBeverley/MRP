@@ -93,7 +93,11 @@ Connection.getConnectionsDAG = function (){
   var connections = Connection.connections.getArray();
   var r = [];
   for (var i in connections){
-    r.push([connections[i].from.getGraphData(),connections[i].to.getGraphData()])
+    var con = {
+      from: connections[i].from.getGraphData(),
+      to: connections[i].to.getGraphData()
+    }
+    r.push(con)
   };
   return r;
 }

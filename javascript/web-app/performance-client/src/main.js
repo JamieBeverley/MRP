@@ -59,16 +59,13 @@ for (var i in speakerCoordinateRatios){
 positionSpeakers()
 
 Connection.connections.on(['add','remove'],function(){
-  var dag = Connection.getConnectionsDAG(); // [[from, to]] where from and to are from 'getGraphData'
+  var dag = Connection.getConnectionsDAG(); // [{from:..., to:...}] where from and to are from 'getGraphData'
   var msg = {
     type: "updateConnections",
     value: dag
   };
-  try {
-    SCClientWS.ws.send(JSON.stringify(msg));
-  } catch (e){
-    console.log("WARNING: could not send updateConnections message to SCClient: "+e)
-  }
+  SCClientWS.send(msg);
+
 })
 
 
@@ -136,20 +133,15 @@ map.addInteraction(select);
 // Connection Interaction
 function onConnectable(coordinate){
   var features = audienceSource.getFeatures().map(function(f){return f.type})
-  console.log("features: "+features)
   var a = audienceSource.getFeaturesAtCoordinate(coordinate)
   var isOnConnectable = a.length>0;
-  console.log("clicked on connectable: "+isOnConnectable);
   return isOnConnectable;
 }
 
 var connectionDraw = new Draw({
   type:"LineString",
   condition: function(browserEvent){
-    console.log("___________________")
-    console.log(browserEvent.coordinate);
     var shift = Condition.shiftKeyOnly(browserEvent);
-    console.log("shift: "+shift);
     var ctrl = Condition.platformModifierKeyOnly(browserEvent);
     return !ctrl && !shift && onConnectable(browserEvent.coordinate)},
   wrapX: false,
@@ -162,10 +154,8 @@ var from;
 var drawStart = false;
 connectionDraw.on('drawstart', function(ev){
   drawStart = true;
-  console.log('drawstart...')
   var coord = ev.target.sketchCoords_[1];
   var atCoord = audienceSource.getFeaturesAtCoordinate(coord);
-  console.log(atCoord)
   if(atCoord){
     from = atCoord[0];
   } else {
@@ -190,19 +180,14 @@ connectionDraw.on('drawend',function(ev){
   var to = audienceSource.getFeaturesAtCoordinate(finalCoord);
   if(to){
     to = to[0];
-    console.log("found to: "+to);
   } else {
-    console.log('No feature at destination');
     return;
   }
-  console.log("from in draw end: "+from)
   if(from){
     var success = from.connect(to);
-
     if(!success){
       console.log("...")
     }
-
   } else {
     console.log("this condition shouldn't have been reached ...")
   }
@@ -241,7 +226,6 @@ function positionSpeakers(){
   var extent = map.getView().calculateExtent();
   var resolution = map.getView().getResolution();
   var radius = 40*resolution;
-  console.log('reposition')
   for (var i in Speaker.eightChannelSpeakerCoordinateRatios){
     var x = speakerCoordinateRatios[i][0];
     var y = speakerCoordinateRatios[i][1];
@@ -262,7 +246,6 @@ map.getViewport().addEventListener('contextmenu', function (evt) {
   evt.preventDefault();
   var coordinate = map.getEventCoordinate(evt);
   var resolution = map.getView().getResolution();
-  console.log(coordinate)
   var radius = 15*resolution;
   var c = new Computation(coordinate, audienceSource, radius)
   SCClientWS.send({type:"newConnectable",value:c.getGraphData()});
@@ -308,80 +291,6 @@ document.onkeyup = function(e) {
 }
 
 
-
-// Tool modifier widget div on bottom left
-//   - selection tool - tapping objects selects them, dragging in empty space makes a selection box
-//   - hand tool (moving around) - default
-//   - zoom tool - meh...
-//   - draw tool - dragging from object
-
-
-// right click to make a 'mapping' object (a triangle)
-// shift click and drag to connect 'selectedFeatures' to speaker
-
-
-// either listening to yourself, or someone else...
-// you open the site:
-//  - nothing happens until 'begin'/'start listening' is checked
-//  - click begin
-//    - 'newRemote' message is sent to server
-//    - server sends 'newRemote' message to all connected clients
-//    - all remotes draw that remote on their map and keep reference of it
-//  - a remote clicks on a remote on their map
-//    - 'subscribe' message is sent to server with uid of remote to be subscribed to
-//    - server adds the remote to the subscribee's list of subscriptions
-//    - a timeout function on the server iterates through each remote/client and sends
-//      the 'params' of the subscribed to remotes
-//  - the clients receive params from their subscribed to remotes, which are re-sonified with web-audio
-
-//  - on another port the same thing is happening except that client is trying to establish a ws connection to a locally run node program that
-//    forwards messages to synthesize sounds in supercollider;
-
-
-
-
-// // SC Client Websocket:
-// window.WebSocket = window.WebSocket || window.MozWebSocket;
-// var nodeSCClientWS= {readyState:0};
-//
-// try{
-//   console.log("connecting via ws to: ws://localhost:8000");
-// 	nodeServerWS = new WebSocket("ws://localhost:8000", 'echo-protocol');
-// } catch (e){
-// 	console.log("no WebSocket connection "+e)
-// }
-//
-// var connectToNodeSCClient = function(){
-//     if(nodeSCClientWS.readyState!= 1){
-//       console.log("connecting to sc client ws")
-//       try{
-//         nodeSCClientWS = new WebSocket("ws://"+location.hostname+":9000", 'echo-protocol')
-//       } catch (e){
-//         console.log("error connecting to sc client")
-//       }
-//       setTimeout(connectToNodeSCClient,5000)
-//     }
-// };
-// connectToNodeSCClient();
-//
-// nodeSCClientWS.onopen = function (){
-//   console.log("SC connection opened");
-// }
-// nodeSCClientWS.onclose = function(){
-//   connectToNodeSCClient();
-// }
-//
-// nodeSCClientWS.addEventListener("message", function(message){
-//   var msg;
-//   try{
-//     msg = JSON.parse(msg);
-//   } catch (e){
-//     console.log("could not parse ws message from sc client")
-//     return
-//   }
-//   console.log(msg);
-// })
-
 var nodeServerWS;
 
 try{
@@ -393,23 +302,8 @@ try{
 
 if (nodeServerWS){
 
-  // Tell the server we're here and we've joined
-  // TODO - add location scrambling and UI to ask for permission/
-  //        suggest alternative ways to participate
-
-
-  // navigator.geolocation.getCurrentPosition(function(pos){
-  //   // longitude first aligning with openlayers' conventions
-  //   var coordinates = [pos.coords.longitude, pos.coords.latitude];
-  //   var msg = {type:"consented", coordinates:coordinates};
-  //   nodeServerWS.send(JSON.stringify(msg))
-  // });
-
-
-
   nodeServerWS.addEventListener('message', function(message){
     var msg;
-
     try {
       // For some reason a single parse is leaving it as a string...
       var msg = JSON.parse(message.data);
@@ -461,22 +355,6 @@ if (nodeServerWS){
 
 
 
-// var things = [[51.5074, -0.1278], [19.4326, -99.1332], [35.6895, 139.6917],[43,-79]]
-//
-// for (var i in things){
-//   var coordinate = things[i];
-//   console.log(coordinate)
-//   var featureOpts = {
-//     geometry: new Circle(coordinate, 587036.3772301537),
-//     labelPoint: new Point(coordinate),
-//     name: i
-//   }
-//   var feature = new Feature(featureOpts);
-//   audienceSource.addFeature(feature)
-// }
-
-
-
 // setTimeout(function(){
 // // for making figures:
 // var aa =new Remote(11, Proj.fromLonLat([43,-79]), audienceSource);
@@ -497,26 +375,3 @@ function updateRemoteParams(msg){
   msg.loudness= msg.rms;
   Remote.remotes[msg.uid].setParams(msg);
 }
-
-
-//
-//
-//
-//
-// // Called when receiving ws 'params' message
-// function updateRemoteParams(msg){
-//   for (i in msg.remotes){
-//     // msg.remotes[i]: {uid:3, params: {clarity:_, turbidity
-//     // TODO - msg.remotes[i] should probably be a proper 'Remote' object
-//     if (Remote.remotes[msg.remotes[i].uid] == undefined){
-//       console.log("WARNING client remotes out of sync with server remotes");
-//       // TODO - probably want to instantiate some Remote on the client here once msg contains remotes with coordinates and such
-//     } else {
-//       if (Remote.remotes[msg.remotes[i].uid].subscribed){
-//         Remote.remotes[msg.remotes[i].uid].params = msg.params
-//       } else {
-//         console.log('WARNING: received params from an unsubscribed remote, serverside uid: <'+msg.remotes[i].uid+">");
-//       }
-//     }
-//   }
-// }
