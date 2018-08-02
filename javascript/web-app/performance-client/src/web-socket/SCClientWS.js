@@ -52,9 +52,8 @@ SCClientWS.onMessage = function(message){
     return
   }
 
-  console.log("SCWS: "+msg.type);
   if(msg.type =="levels"){
-    handlLevels(msg.value);
+    handleLevels(msg.value);
   }
 }
 
@@ -74,11 +73,12 @@ SCClientWS.send = function (m) {
 }
 
 
-function handlLevels(levels){
+function handleLevels(levels){
   for (var i =0; i<8; i++){
     var speakerDiv = document.getElementById("s"+i);
     var meter = speakerDiv.childNodes[1].childNodes[0];
-    var percent = Math.max(2,Math.min(levels[i]+80,80))*100/80
+    var percent = (Math.max(Math.min(levels[i]==null?-80:levels[i],0),-80)+80)*100/80
+
     if ([0,1,4,5].includes(i)){
       meter.style.width = percent+"%";
     } else{
@@ -87,6 +87,7 @@ function handlLevels(levels){
 
     if(percent>=100){
       meter.style.backgroundColor = "rgb(130,0,0)"
+      console.log(levels)
     } else if (percent >= 95){
       meter.style.backgroundColor = "rgb(130,130,0)"
     } else {

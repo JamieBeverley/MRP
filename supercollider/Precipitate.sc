@@ -17,6 +17,7 @@ Precipitate {
 	classvar <>speakers;
 	classvar <>connectables;
 	classvar <>connections;
+	classvar <>amplitudes;
 
 
 	*reset{
@@ -32,7 +33,6 @@ Precipitate {
 		Precipitate.nodeOut = NetAddr.new(nodeOutIP, nodeOutPort);
 
 		Precipitate.speakers = [];
-		// outChannels.do{|i|Precipitate.speakers = Precipitate.speakers.add(Speaker(i));};
 
 		Precipitate.connectables = List.new();
 		Precipitate.connections = [];
@@ -40,6 +40,13 @@ Precipitate {
 		if(device.notNil,{Server.default.options.device = device;});
 		Server.default.options.numBuffers = 1024*8;
 		Server.default.options.numOutputBusChannels = 8;
+
+/*		Precipitate.amplitudes = [];
+		Server.default.options.numOutputBusChannels.do{
+			var l = List.new;
+			20.do{l.add(0)};
+			Precipitate.amplitudes = Precipitate.amplitudes.add(l);
+		};*/
 
 		Server.default.waitForBoot({
 			var cmdPFunc,oscCmdPFunc;
@@ -82,15 +89,24 @@ Precipitate {
 		}).add;
 
 		SynthDef(\out,{
-			|lpf=22000, hpf=10, reverb=0,db=0,hrq=1,lrq=1,room=0.3|
+			|lpf=22000, hpf=10, reverb=0,db=0,hrq=1,lrq=1,room=0.3, levelFreq=5|
 			var audio = In.ar(~outBus,Server.default.options.numOutputBusChannels)*(db.dbamp);
 			audio = FreeVerb.ar(audio,mix:Clip.kr(reverb,0,1),room:Clip.kr(room,0,1),damp:0.9);
 			audio = LPF.ar(audio, Clip.kr(lpf,10,22000));//,1/(resonance.clip(0.0001,1)));
 			audio = HPF.ar(audio,Clip.kr(hpf,10,22000));
 			audio = Compander.ar(audio,audio,-30.dbamp,slopeAbove:1/2.5,mul:3.dbamp);
 			audio = Compander.ar(audio,audio,thresh:-1.dbamp,slopeAbove:1/20); // limiter...
+
+			SendReply.kr(Impulse.kr(levelFreq),cmdName:"/amplitude",values:LPF.kr(Amplitude.kr(audio),levelFreq));
 			Out.ar(0,audio);
 		}).add;
+
+		OSCdef(\amplitude,{
+			|msg|
+			msg = msg.keep(-8).ampdb.clip(-80,0).collect({|v| if(v.isNumber,{v},{-80})});
+			msg.postln;
+			Precipitate.nodeOut.sendBundle(0, ["/levels"]++msg);
+		},"/amplitude",recvPort:NetAddr.langPort);
 
 		OSCdef(\playGrain,{
 			|msg|
