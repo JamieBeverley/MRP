@@ -29,6 +29,34 @@ Precipitate.connectables.size
 
 
 
+~sp.pattern = Pdef(\a, ~sp.basePattern <> Ppar(~sp.inputs))
+
+~sp.pattern.play
+
+~sp.basePattern
+
+
+~sp.inputs[0]
+
+~s = Speaker.new(1,[]);
+
+~c = Computation.new(22)
+
+
+~r = Remote.new(22,Remote.makeParams,1,0)
+
+~r.connect(~c)
+
+~c.connect(~s)
+
+
+~r.disconnect(~s)
+
+~c.disconnect(~s)
+
+
+
+
 
 
 

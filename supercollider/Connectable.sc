@@ -23,26 +23,16 @@ Connectable {
 
 	initConnectable{
 		|type, uid|
-		this.type = type;
+		this.type = type.asSymbol;
 		this.uid = uid;
-		this.identifier = (this.type++":"++this.uid).asSymbol;
-		this.baseIdentifier = (this.identifier++"_base").asSymbol;
+		this.identifier = (this.type++':'++this.uid).asSymbol;
+		this.baseIdentifier = (this.identifier++'_base').asSymbol;
 	}
 
 	connect {
 		|to|
 
-		if(to.type.toLower == "speaker",{
-
-			// var pat = Pdef(this.identifier++"::"++to.identifier, to.basePattern <> this.pattern);
-			// to.inputs = to.inputs.add(pat);
-
-
-			/*to.inputs = to.inputs.add(this.pattern);
-			to.pattern = Pdef(to.identifier, to.basePattern <> Ppar(to.inputs,inf));
-			to.pattern.play;*/
-
-
+		if(to.type == 'speaker',{
 
 			to.inputs = to.inputs.add(Pdef(this.identifier));
 			Pdef(to.identifier, Pdef(to.baseIdentifier) <> Ppar(to.inputs,inf)).play;
@@ -56,7 +46,7 @@ Connectable {
 	disconnect {
 		|to|
 
-		if(to.type.toLower == "speaker", {
+		if(to.type == 'speaker', {
 			// var remove = this.identifier++"::"++to.identifier;
 
 			to.inputs = to.inputs.reject({|i|i.key == this.identifier});
@@ -76,6 +66,11 @@ Connectable {
 			// to.pattern = Pdef(to.identifier, to.basePattern);
 			Pdef(to.identifier, Pdef(to.baseIdentifier));
 		});
+	}
+
+	equals{
+		|other|
+		^ (this.type==other.type) && (this.uid == other.uid);
 	}
 }
 
@@ -97,18 +92,18 @@ Remote : Connectable {
 		|uid, params=nil, rate, rateNoise|
 		if(rate.isNil,{rate = Remote.defaultRate});
 		if(rateNoise.isNil,{rateNoise = Remote.defaultRateNoise});
-		^super.new("remote", uid).init(params,rate,rateNoise);
+		^super.new('remote', uid).init(params,rate,rateNoise);
 	}
 
 	*makeParams{
 		|clarity=0,loudness=0,spectralCentroid=0,pitch=0,turbidity=0, strength=0|
 		var d = Dictionary.new();
-		d["clarity"] = clarity;
-		d["loudness"] = loudness;
-		d["spectralCentroid"] = spectralCentroid;
-		d["pitch"] = pitch;
-		d["turbidity"] = turbidity;
-		d["strength"] = strength;
+		d['clarity'] = clarity;
+		d['loudness'] = loudness;
+		d['spectralCentroid'] = spectralCentroid;
+		d['pitch'] = pitch;
+		d['turbidity'] = turbidity;
+		d['strength'] = strength;
 		^ d;
 	}
 
@@ -124,7 +119,7 @@ Remote : Connectable {
 			params['strength'] = 0;
 			params['spectralCentroid'] = 0;
 		});
-		this.type = "remote";
+		this.type = 'remote';
 		this.params = params;
 		this.rate = rate;
 		this.rateNoise = rateNoise;
@@ -175,33 +170,27 @@ Computation : Connectable {
 	var <>type;
 
 	*new{
-		|uid, computationType="undefined", computationValue=nil|
-		^super.new("computation", uid).init(computationType,computationValue);
+		|uid, computationType='undefined', computationValue=nil|
+		^super.new('computation', uid).init(computationType,computationValue);
 	}
 
 	init{
 		|computationType, computationValue|
-		this.computationType = computationType;
+		this.computationType = computationType.asSymbol;
 		this.computationValue = computationValue;
-		this.type = "computation";//Todo - yuck.
+		this.type = 'computation';//Todo - yuck. ... why is this here....
 		this.setBasePattern();
-		//Computation.getBasePatternFromComputation(computationType, computationValue);
-		// this.pattern = Pdef(this.identifier, this.basePattern);
-
 		Pdef(this.identifier, Pdef(this.baseIdentifier));
 	}
 
 	setBasePattern{
 		var pat;
-		if(this.computationType == "randomness",{
-			"base set".postln;
+		if(this.computationType == 'tolerance',{
 			pat = Pbind(\tolerance, Pfunc({this.computationValue}));
 		});
 
-		if(this.computationType =="sample and hold",{
+		if(this.computationType == 'hold',{
 			var pf = Pfunc({this.computationValue.clip(1,inf).round});
-			"@@@@@@#@#@$#$@#$!@#$!@#$!@#$".post;this.computationValue.postln;
-			this.computationValue.class.postln;
 			pat = Pbind(
 				\clarity,Pstutter(pf,Pkey(\clarity)),
 				\turbidity,Pstutter(pf,Pkey(\turbidity)),
@@ -211,32 +200,29 @@ Computation : Connectable {
 				\pitchedness,Pstutter(pf,Pkey(\pitchedness)));
 		});
 
-		if(this.computationType == "reweight",{
+		if(this.computationType == 'reweight',{
 
 			pat = Pbind(
-				\clarityWeight,this.computationValue["clarity"],
-				\turbidityWeight,this.computationValue["turbidity"],
-				\strengthWeight,this.computationValue["strength"],
-				\loudnessWeight,this.computationValue["loudness"],
-				\spectralCentroidWeight,this.computationValue["spectralCentroid"],
-				\pitchednessWeight,this.computationValue["pitch"]);
+				\clarityWeight,this.computationValue['clarity'],
+				\turbidityWeight,this.computationValue['turbidity'],
+				\strengthWeight,this.computationValue['strength'],
+				\loudnessWeight,this.computationValue['loudness'],
+				\spectralCentroidWeight,this.computationValue['spectralCentroid'],
+				\pitchednessWeight,this.computationValue['pitch']);
 		});
 
-		if (this.computationType == "grain randomness",{
-			"grain randomness".postln;
-			pat = Pbind(\tolerance, Pfunc({this.computationValue}));
-		});
 
-		if (this.computationType == "corpus",{
-			// TODO does value need to be an index opposed to a string?
-			pat = Pbind(\corpus, this.computationValue);
-		});
-		if (this.computationType == "undefined",{
+		if (this.computationType == 'undefined',{
 			pat = Pbind();
 		});
 
+		if(pat.isNil,{
+			"Heads up, didn't match an explicit computation type...".warn;
+			pat = Pbind(this.computationType, this.computationValue);
+
+		});
+
 		Pdef(this.baseIdentifier,pat);
-		// this.basePattern = Pdef(this.identifier++"_base",pat);
 	}
 
 
@@ -258,39 +244,22 @@ Computation : Connectable {
 	*parseMessage{
 		|msg|
 		var uid = msg[2].asFloat;
-		var type = msg[4].asString.toLower;
+		var type = msg[4].asString.toLower.asSymbol;
 		var value;
 
-
-		if(type == "randomness",{
-			value = msg[6].asFloat;
-		});
-
-		if(type =="sample and hold",{
-			value = msg[6].asFloat;
-		});
-
-		if(type == "reweight",{
+		if(type == 'reweight',{
 			var list = msg.keep(-12);
 			value = Dictionary.new();
 			list.size.do{
 				|i|
 				if(i%2==0,{value[list[i].asString] = list[i+1].asFloat});
 			};
+		},{
+			if(type != 'undefined',{
+				value = msg[6].asFloat;
+			});
 		});
 
-		if (type == "grain randomness",{
-			value = msg[6].asFloat;
-		});
-
-		if (type == "corpus",{
-			//TODO - this might need to be a number referring to a corpus
-			value = msg[6].asString;
-		});
-
-		if( (value.isNil) && (type!="undefined"),{
-			"not recognizable compution type".warn;
-		});
 		^[uid,type,value];
 	}
 
@@ -304,22 +273,13 @@ Speaker : Connectable {
 	*new{
 		|uid, inputs|
 		if(inputs.isNil,{inputs=[]});
-		^super.new("speaker", uid).init(inputs);
+		^super.new('speaker', uid).init(inputs);
 	}
 
 	init{
 		|inputs|
 		this.inputs = inputs;
-		this.type = "speaker";
-		/*this.basePattern = Pdef(this.identifier++"_base",
-		Pbind(
-		\midinote, Pfunc({
-		|event|
-		"in speaker: ".post;
-		event.postln;
-		if(event.keys.includes('connected'),{1},{\r});}),
-		\out, this.uid)
-		);*/
+		this.type = 'speaker';
 		Pdef(this.baseIdentifier,
 			Pbind(
 				\midinote, Pfunc({
@@ -330,8 +290,5 @@ Speaker : Connectable {
 				\out, this.uid)
 		);
 		Pdef(this.identifier, Pdef(this.baseIdentifier));
-		// this.pattern = Pdef(this.identifier, this.basePattern);
 	}
-
-
 }

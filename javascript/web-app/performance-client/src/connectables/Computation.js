@@ -57,7 +57,17 @@ Computation.prototype.setRadius = function (radius){
   this.getGeometry().setCoordinates(vertices);
 }
 
-Computation.computationTypes = ["undefined","reweight", "sample and hold", "grain randomness", "corpus"]
+// Computation.computationTypes = ["undefined","reweight", "hold", "tolerance", "attack", "release", "corpus"]
+Computation.computationTypes = {
+  "undefined": {min:undefined,max:undefined, stepsize:undefined, defaultInitialValue: undefined},
+  "reweight": {min:undefined,max: undefined, stepsize:undefined, defaultInitialValue: new Params(1,1,1,1,1,1)},
+  "hold": {min:1, max:Infinity, stepsize:1, defaultInitialValue:1},
+  "tolerance": {min:0, max:1, stepsize:0.01, defaultInitialValue:0},
+  "attack": {min:0, max:Infinity, stepsize:0.01, defaultInitialValue:0},
+  "release": {min:0, max:Infinity, stepsize:0.01, defaultInitialValue:0},
+  "corpus": {min:undefined, max:undefined, stepsize:undefined, defaultInitialValue:SCState.corpuses[0]},
+}
+
 
 Computation.prototype.getInfoHTML = function (){
   var container = document.createElement("div");
@@ -74,9 +84,9 @@ Computation.prototype.getInfoHTML = function (){
 
   for (var i in Computation.computationTypes){
     var option = document.createElement('option');
-    option.value = Computation.computationTypes[i];
-    option.innerHTML = Computation.computationTypes[i];
-    option.selected = this.computation.type == Computation.computationTypes[i]
+    option.value = i; // Computation.computationTypes[i];
+    option.innerHTML = i; //Computation.computationTypes[i];
+    option.selected = this.computation.type == i; // Computation.computationTypes[i]
     functionDropDown.appendChild(option)
   }
   content.appendChild(functionDropDown)
@@ -110,28 +120,41 @@ Computation.prototype.getComputationSpecHTML = function(){
     // Bubble up event
     var closure = this
     initialVal.onParamsChange = function(){
-      // closure.onComputationChange();
       closure.onChange();
     }
     this.setComputation({type:this.computation.type,value:initialVal})
     var html = this.computation.value.getSetterHTML();
     container.appendChild(txt);
     container.appendChild(html);
-  } else if (this.computation.type =="sample and hold"){
-    var txt = document.createTextNode("Grains: ")
+  } else if (this.computation.type =="hold"){
+    var txt = document.createTextNode("grains: ")
     var initialVal = this.computation.value?this.computation.value:1;
     this.setComputation({type:this.computation.type, value: initialVal});
     var numInput = this.createNumInput(this.computation.type, 1, 1, Infinity, initialVal);
     container.appendChild(txt);
     container.appendChild(numInput);
-  } else if (this.computation.type == "grain randomness"){
-    var txt = document.createTextNode("randomness: ")
+  } else if (this.computation.type == "tolerance"){
+    var txt = document.createTextNode("tolerance: ")
     var initialVal = this.computation.value?this.computation.value:0;
     this.setComputation({type:this.computation.type, value: initialVal});
     var numInput = this.createNumInput(this.computation.type, 0.01, 0, 1, initialVal);
     container.appendChild(txt);
     container.appendChild(numInput);
-  } else if (this.computation.type == "corpus"){
+  } else if (this.computation.type =="attack"){
+    var txt = document.createTextNode("attack: ")
+    var initialVal = this.computation.value?this.computation.value:0;
+    this.setComputation({type:this.computation.type, value: initialVal});
+    var numInput = this.createNumInput(this.computation.type, 0.01, 0, Infinity, initialVal);
+    container.appendChild(txt);
+    container.appendChild(numInput);
+  }else if (this.computation.type =="release"){
+    var txt = document.createTextNode("release: ")
+    var initialVal = this.computation.value?this.computation.value:0;
+    this.setComputation({type:this.computation.type, value: initialVal});
+    var numInput = this.createNumInput(this.computation.type, 0.01, 0, Infinity, initialVal);
+    container.appendChild(txt);
+    container.appendChild(numInput);
+  }else if (this.computation.type == "corpus"){
     var dd = document.createElement('select');
     var initialIndex = SCState.corpuses.indexOf(this.computation.value);
     initialIndex = initialIndex==(-1)?0:initialIndex;
@@ -171,29 +194,17 @@ Computation.prototype.createNumInput = function(computationType, stepsize, min, 
   var closure = this;
   numInput.onchange = function (){
     var val = numInput.value;
-    // closure.computation.value = val;
     closure.setComputation({type:computationType, value:val})
-    // closure.computation[computationType].value = val;
   }
   return numInput
 }
 
 Computation.getEmptyComputationObj = function(type){
-  var r = {type:type}
-  if (type == "reweight"){
-    r.value = new Params(1,1,1,1,1,1);
-    // Bubble up change events
-    r.value.onParamsChange = function(){this.onChange();} //this.onComputationChange();}
-  } else if (type =="sample and hold"){
-    r.value = 0;
-  } else if (type == "grain randomness"){
-    r.value = 0;
-  } else if (type == "corpus"){
-    r.value = SCState.corpuses[0]?SCState.corpuses[0]:"<none>";
-  } else{
-    r = {type:"undefined"}
+  if(!Object.keys(Computation.computationTypes).includes(type)){
+    console.log("WARNING: tried to create empty computation obj for a computation of unrecognized type")
+    type = 'undefined'
   }
-  return r;
+  return {type:type,value:Computation.computationTypes[type].defaultInitialValue};
 }
 
 Computation.prototype.getGraphData = function (){

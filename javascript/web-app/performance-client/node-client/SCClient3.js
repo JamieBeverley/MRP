@@ -78,7 +78,7 @@ function onError(err,r){
 }
 
 function onClose(x,r){
-  console.log('Client disconnected')
+  console.log('Client disconnected____________________________________________________________')
 	connectables.items = [];
 	connectables.edges = [];
 }
@@ -252,8 +252,10 @@ function updateConnections (dag){
 
 function sendGraphDump(){
 	isGraphDump = true;
-	for (var i in connectables.items){
-		newConnectable(connectables.items[i]);
+	var items = connectables.items;
+	connectables.items =[];
+	for (var i in items){
+		newConnectable(items[i]);
 	}
 	// Clear 'graph' and re-generate it, sending SC all the appropriate connections
 	var graphTmp = connectables.edges;

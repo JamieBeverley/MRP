@@ -188,9 +188,9 @@ Precipitate {
 		OSCdef(\newConnection,{
 			|msg|
 
-			var fromType = msg[1].asString;
+			var fromType = msg[1].asSymbol;
 			var fromUid = msg[2].asFloat;
-			var toType = msg[3].asString;
+			var toType = msg[3].asSymbol;
 			var toUid = msg[4].asFloat;
 			var from = Precipitate.connectables.select({|v| v.type==fromType && v.uid==fromUid})[0];
 			var to = Precipitate.connectables.select({|v| v.type==toType && v.uid==toUid})[0];
@@ -217,9 +217,9 @@ Precipitate {
 
 		OSCdef(\removeConnection,{
 			|msg|
-			var fromType = msg[1].asString;
+			var fromType = msg[1].asSymbol;
 			var fromUid = msg[2].asFloat;
-			var toType = msg[3].asString;
+			var toType = msg[3].asSymbol;
 			var toUid = msg[4].asFloat;
 			var from = Precipitate.connectables.select({|v| v.type==fromType && v.uid==fromUid})[0];
 			var to = Precipitate.connectables.select({|v| v.type==toType && v.uid==toUid})[0];
@@ -243,8 +243,7 @@ Precipitate {
 				Precipitate.connections.size.do{
 					|i|
 					var con = Precipitate.connections[i];
-					if (con[0].type == from.type && con[0].uid == from.uid &&
-						con[1].type==to.type && con[1].uid == to.uid,{
+					if( (con[0].equals(from)) && (con[1].equals(to)),{
 							index = i;
 					});
 				};
@@ -261,7 +260,7 @@ Precipitate {
 
 		OSCdef(\updateConnectable,{
 			|msg|
-			var type = msg[1].asString;
+			var type = msg[1].asSymbol;
 			var uid = msg[2].asFloat;
 			var connectable = Precipitate.connectables.select({|v| v.type==type && v.uid==uid})[0];
 
