@@ -96,15 +96,15 @@ function onMessage(message, r){
 		console.log("data: "+data)
     return;
   }
-
-	console.log("msg type: "+msg.type);
+	if (msg.type!="updateConnectable"){
+		console.log("msg type: "+msg.type);
+	}
 	if (msg.type == "updateConnections"){
     console.log("connections update: ");
     updateConnections(msg.value);
 	} else if (msg.type == "updateConnectable") {
     var uid = msg.value.uid;
     var type = msg.value.type;
-    console.log("Update for: " +type+": "+uid);
     updateConnectable(msg.value);
 
   } else if (msg.type == "newConnectable"){
@@ -153,6 +153,9 @@ function newConnectable(connectable){
 }
 
 function updateConnectable(connectable){
+	if(connectable.type!="remote"){
+		console.log("msg type: updateConnectable - " +connectable.type);
+	}
 	for (var i in connectables.items){
 		var c = connectables.items[i]
 		if(equals(connectable,c)){

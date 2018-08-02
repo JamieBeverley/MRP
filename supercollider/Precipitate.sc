@@ -20,7 +20,7 @@ Precipitate {
 
 
 	*reset{
-		Precipitate.connectables = [];
+		Precipitate.connectables = List.new();
 		Precipitate.connections = [];
 	}
 
@@ -34,7 +34,7 @@ Precipitate {
 		Precipitate.speakers = [];
 		// outChannels.do{|i|Precipitate.speakers = Precipitate.speakers.add(Speaker(i));};
 
-		Precipitate.connectables = speakers;
+		Precipitate.connectables = List.new();
 		Precipitate.connections = [];
 
 		if(device.notNil,{Server.default.options.device = device;});
@@ -54,30 +54,7 @@ Precipitate {
 					0.1.wait;
 					"Adding new ~out Synth".postln;
 					~out = Synth.new(\out,addAction:'addToTail');
-
-					OSCdef(\playGrain,{
-						|msg|
-						var features = Dictionary.new();
-						var corpus = msg[3];
-						var tolerance = msg[4];
-						var out = msg[5];
-						var amp = msg[6];
-
-						var attack = msg[7];
-						var release = msg[8];
-						var match;
-
-						features["rms"] = (msg[9].asFloat)/0.2; // TODO - this scaling is kind of custom
-						features["spectralCentroid"] = msg[10].asFloat;
-						features["pitch"] = msg[11].asFloat;
-						features["clarity"] = msg[12].asFloat;
-						features["strength"] = msg[13].asFloat;
-						features["turbidity"] = msg[14].asFloat;
-						tolerance.postln;
-
-						match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
-						match.play(out:out,amp:amp,attack:attack,release:release);
-					},"/grain",recvPort:NetAddr.langPort);
+					Precipitate.loadSynths;
 				}).play;
 			};
 
@@ -119,7 +96,7 @@ Precipitate {
 			|msg|
 			var features = Dictionary.new();
 			var corpus = msg[3];
-			var tolerance = msg[4];
+			var tolerance = msg[4].asFloat;
 			var out = msg[5];
 			var amp = msg[6];
 
@@ -127,15 +104,19 @@ Precipitate {
 			var release = msg[8];
 			var match;
 
-			features["rms"] = (msg[9].asFloat)/0.2; // TODO - this scaling is kind of custom
-			features["spectralCentroid"] = msg[10].asFloat;
-			features["pitch"] = msg[11].asFloat;
-			features["clarity"] = msg[12].asFloat;
-			features["strength"] = msg[13].asFloat;
-			features["turbidity"] = msg[14].asFloat;
-			tolerance.postln;
+			features["rms"] = (msg[9].asFloat).clip(0,1); // TODO - this scaling is kind of custom
+			features["spectralCentroid"] = msg[10].asFloat.clip(0,1);
+			features["pitch"] = msg[11].asFloat.clip(0,1);
+			features["clarity"] = msg[12].asFloat.clip(0,1);
+			features["strength"] = msg[13].asFloat.clip(0,1);
+			features["turbidity"] = msg[14].asFloat.clip(0,1);
+			"playGrainTolerance: ".post;tolerance.postln;
+			"playGrain tolerance class: ".post;tolerance.class.postln;
 
 			match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
+
+			~m=	~m.add(match);
+			~m.keep(-20);
 			match.play(out:out,amp:amp,attack:attack,release:release);
 		},"/grain",recvPort:NetAddr.langPort)
 
@@ -148,7 +129,7 @@ Precipitate {
 				|i|
 				i.pattern.stop;
 			};
-			Precipitate.connectables = [];
+			Precipitate.connectables = List.new();
 			Precipitate.connections.do{
 				|i|
 				i[0].disconnect(i[1]);
@@ -169,15 +150,17 @@ Precipitate {
 			"new connectable".postln;
 			msg.postln;
 			if(msg[1].asString.toLower == "computation",{
-				connectable = Computation.parseMessage(msg);
+				var spec = Computation.parseMessage(msg);
+				connectable = Computation.new(spec[0],computationType:spec[1],computationValue:spec[2]);
 			});
 			if(msg[1].asString.toLower == "remote",{
-				connectable = Remote.parseMessage(msg);
+				var spec = Remote.parseMessage(msg);
+				connectable = Remote.new(spec[0], spec[1], Remote.defaultRate, Remote.defaultRateNoise);
 			});
 			if(msg[1].asString.toLower == "speaker",{connectable = Speaker(msg[2].asFloat,[])});
 
-			Precipitate.connectables = Precipitate.connectables.add(connectable);
-
+			// Precipitate.connectables = Precipitate.connectables.add(connectable);
+			Precipitate.connectables.add(connectable);
 			("new: "+connectable.type++":"++connectable.uid).postln;
 		},path:"/newConnectable",recvPort:Precipitate.nodeRecvPort);
 
@@ -224,6 +207,8 @@ Precipitate {
 
 
 			if(to.notNil && from.notNil,{
+				"from ".post;from.postln;
+				"to ".post;to.postln;
 				from.connect(to);
 				Precipitate.connections = Precipitate.connections.add([from,to]);
 				("new connection:  "++fromType++":"++fromUid++"->"++toType++":"++toUid).postln;
@@ -240,6 +225,7 @@ Precipitate {
 			var to = Precipitate.connectables.select({|v| v.type==toType && v.uid==toUid})[0];
 
 			var index;
+			"removeConnection".postln;
 
 
 			if(from.isNil,{

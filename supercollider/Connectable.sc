@@ -10,8 +10,8 @@ Connectable {
 
 	var <>type;
 	var <>uid;
-	var <>identifier; // a string composing type and uid:  computation:3, remote:4 etc...
-
+	var <>identifier; // a symbol composing type and uid:  computation:3, remote:4 etc...
+	var <>baseIdentifier; // for base patterns...
 	// var input; // Either something feeding this connectable, or itself (if no input)
 
 	*new {
@@ -25,7 +25,8 @@ Connectable {
 		|type, uid|
 		this.type = type;
 		this.uid = uid;
-		this.identifier = this.type++":"++this.uid;
+		this.identifier = (this.type++":"++this.uid).asSymbol;
+		this.baseIdentifier = (this.identifier++"_base").asSymbol;
 	}
 
 	connect {
@@ -33,12 +34,20 @@ Connectable {
 
 		if(to.type.toLower == "speaker",{
 
-			var pat = Pdef(this.identifier++"::"++to.identifier, to.basePattern <> this.pattern);
-			to.inputs = to.inputs.add(pat);
+			// var pat = Pdef(this.identifier++"::"++to.identifier, to.basePattern <> this.pattern);
+			// to.inputs = to.inputs.add(pat);
+
+
+			/*to.inputs = to.inputs.add(this.pattern);
 			to.pattern = Pdef(to.identifier, to.basePattern <> Ppar(to.inputs,inf));
-			to.pattern.play;
+			to.pattern.play;*/
+
+
+
+			to.inputs = to.inputs.add(Pdef(this.identifier));
+			Pdef(to.identifier, Pdef(to.baseIdentifier) <> Ppar(to.inputs,inf)).play;
 		},{ // Else
-			to.pattern = Pdef(to.identifier, to.basePattern <> this.pattern);
+			Pdef(to.identifier, Pdef(to.baseIdentifier) <> Pdef(this.identifier));
 		});
 		^to;
 	}
@@ -48,18 +57,24 @@ Connectable {
 		|to|
 
 		if(to.type.toLower == "speaker", {
-			var remove = this.identifier++"::"++to.identifier;
-			to.inputs = to.inputs.reject({|i|i.key.asString.toLower == remove});
+			// var remove = this.identifier++"::"++to.identifier;
+
+			to.inputs = to.inputs.reject({|i|i.key == this.identifier});
 			if (to.inputs.size == 0,{
-				to.pattern = Pdef(to.identifier, to.basePattern);
-				to.pattern.stop;
+				// to.pattern = Pdef(to.identifier, to.basePattern);
+				// to.pattern.stop;
+
+				Pdef(to.identifier, Pdef(to.baseIdentifier)).stop;
 			},{
-				to.pattern = Pdef(to.identifier, to.basePattern <> Ppar(to.inputs,inf));
-				to.pattern.play;
+				// to.pattern = Pdef(to.identifier, to.basePattern <> Ppar(to.inputs,inf));
+				// to.pattern.play;
+
+				Pdef(to.identifier, Pdef(to.baseIdentifier) <> Ppar(to.inputs,inf)).play;
 			});
 
 		},{// Else
-			to.pattern = Pdef(to.identifier, to.basePattern);
+			// to.pattern = Pdef(to.identifier, to.basePattern);
+			Pdef(to.identifier, Pdef(to.baseIdentifier));
 		});
 	}
 }
@@ -85,6 +100,18 @@ Remote : Connectable {
 		^super.new("remote", uid).init(params,rate,rateNoise);
 	}
 
+	*makeParams{
+		|clarity=0,loudness=0,spectralCentroid=0,pitch=0,turbidity=0, strength=0|
+		var d = Dictionary.new();
+		d["clarity"] = clarity;
+		d["loudness"] = loudness;
+		d["spectralCentroid"] = spectralCentroid;
+		d["pitch"] = pitch;
+		d["turbidity"] = turbidity;
+		d["strength"] = strength;
+		^ d;
+	}
+
 	init{
 		|params, rate, rateNoise|
 		var patternPairs;
@@ -103,21 +130,26 @@ Remote : Connectable {
 		this.rateNoise = rateNoise;
 
 		patternPairs = this.params.collect({|val,key| Pfunc({this.params[key]});}).asKeyValuePairs.collect({|val,i|if(i%2==0,{val.asSymbol},{val})});
-		~patternPairs = patternPairs;
-		this.basePattern = Pbind.new;
-		this.basePattern.patternpairs = patternPairs++[
+
+		patternPairs = patternPairs++[
 			\instrument,\grain,
 			\connected,1,
 			\dur,Pfunc({
 				((1/this.rate)+(Pwhite(-1*this.rateNoise*100,this.rateNoise*100).asStream.next/100)).clip(0.01,inf)})
 		];
-		this.pattern = Pdef(this.identifier, this.basePattern);
+
+		patternPairs = Pbind.new.patternpairs_(patternPairs);
+		// this.basePattern = Pdef(this.identifier++"_base", patternPairs);
+		// this.pattern = Pdef(this.identifier, this.basePattern);
+
+		Pdef(this.baseIdentifier, patternPairs);
+		Pdef(this.identifier, Pdef(this.baseIdentifier));
 	}
 
 	update{
 		|msg|
 		var x = Remote.parseMessage(msg);
-		this.params = x.params;
+		this.params = x[1];
 	}
 
 	*parseMessage{
@@ -130,7 +162,7 @@ Remote : Connectable {
 			if(i%2==0,{params[list[i].asString] = list[i+1].asFloat});
 		};
 
-		^Remote.new(uid,params,Remote.defaultRate,Remote.defaultRateNoise);
+		^[uid,params];//Remote.new(uid,params,Remote.defaultRate,Remote.defaultRateNoise);
 	}
 
 }
@@ -154,7 +186,9 @@ Computation : Connectable {
 		this.type = "computation";//Todo - yuck.
 		this.setBasePattern();
 		//Computation.getBasePatternFromComputation(computationType, computationValue);
-		this.pattern = Pdef(this.identifier, this.basePattern);
+		// this.pattern = Pdef(this.identifier, this.basePattern);
+
+		Pdef(this.identifier, Pdef(this.baseIdentifier));
 	}
 
 	setBasePattern{
@@ -166,6 +200,8 @@ Computation : Connectable {
 
 		if(this.computationType =="sample and hold",{
 			var pf = Pfunc({this.computationValue.clip(1,inf).round});
+			"@@@@@@#@#@$#$@#$!@#$!@#$!@#$".post;this.computationValue.postln;
+			this.computationValue.class.postln;
 			pat = Pbind(
 				\clarity,Pstutter(pf,Pkey(\clarity)),
 				\turbidity,Pstutter(pf,Pkey(\turbidity)),
@@ -188,7 +224,7 @@ Computation : Connectable {
 
 		if (this.computationType == "grain randomness",{
 			"grain randomness".postln;
-			pat = Pbind(\tolerance, Pfunc({this.computationValue.postln;this.computationValue}));
+			pat = Pbind(\tolerance, Pfunc({this.computationValue}));
 		});
 
 		if (this.computationType == "corpus",{
@@ -199,28 +235,31 @@ Computation : Connectable {
 			pat = Pbind();
 		});
 
-		this.basePattern = pat;
+		Pdef(this.baseIdentifier,pat);
+		// this.basePattern = Pdef(this.identifier++"_base",pat);
 	}
 
 
 	update{
 		|msg|
-		var x;
+		var spec;
 		if(msg[4].asString.toLower !="reweight",{
 			msg.removeAt(msg.indexOf('value'));
 		});
-		x = Computation.parseMessage(msg);
+		spec = Computation.parseMessage(msg);
 		msg.postln;
-		this.computationType = x.computationType;
-		this.computationValue = x.computationValue;
+		this.computationType = spec[1];
+		this.computationValue = spec[2];
 		this.setBasePattern();
 	}
+
+
 
 	*parseMessage{
 		|msg|
 		var uid = msg[2].asFloat;
 		var type = msg[4].asString.toLower;
-		var value,computation;
+		var value;
 
 
 		if(type == "randomness",{
@@ -252,14 +291,10 @@ Computation : Connectable {
 		if( (value.isNil) && (type!="undefined"),{
 			"not recognizable compution type".warn;
 		});
-
-
-
-
-		computation = Computation.new(uid,computationType:type,computationValue:value);
-
-		^computation;
+		^[uid,type,value];
 	}
+
+
 }
 
 
@@ -276,12 +311,26 @@ Speaker : Connectable {
 		|inputs|
 		this.inputs = inputs;
 		this.type = "speaker";
-		this.basePattern = Pbind(
-			\midinote, Pfunc({
-				|event|
-				if(event.keys.includes('connected'),{1},{\r});}),
-			\out, this.uid);
-		this.pattern = Pdef(this.identifier, this.basePattern);
+		/*this.basePattern = Pdef(this.identifier++"_base",
+		Pbind(
+		\midinote, Pfunc({
+		|event|
+		"in speaker: ".post;
+		event.postln;
+		if(event.keys.includes('connected'),{1},{\r});}),
+		\out, this.uid)
+		);*/
+		Pdef(this.baseIdentifier,
+			Pbind(
+				\midinote, Pfunc({
+					|event|
+					"in speaker: ".post;
+					event.postln;
+					if(event.keys.includes('connected'),{1},{\r});}),
+				\out, this.uid)
+		);
+		Pdef(this.identifier, Pdef(this.baseIdentifier));
+		// this.pattern = Pdef(this.identifier, this.basePattern);
 	}
 
 
