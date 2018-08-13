@@ -104,7 +104,6 @@ Precipitate {
 		OSCdef(\amplitude,{
 			|msg|
 			msg = msg.keep(-8).ampdb.clip(-80,0).collect({|v| if(v.isNumber,{v},{-80})});
-			msg.postln;
 			Precipitate.nodeOut.sendBundle(0, ["/levels"]++msg);
 		},"/amplitude",recvPort:NetAddr.langPort);
 

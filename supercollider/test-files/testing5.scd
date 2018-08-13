@@ -1,19 +1,39 @@
 (
-~m =[];
-Precipitate.boot(corpusJsonPath:"C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json");
+// Works in NIL
+Precipitate.boot(device:"MOTU Audio ASIO",corpusJsonPath:"C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json");
 
 )
 
 
-Precipitate.connectables.size
+Precipitate.boot(corpusJsonPath:"C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json");
+
+Server.default.options.sampleRate = 48000
+
+Precipitate.connectables[9].computationValue
 
 
+().play
 
 
-~m
+~m.
+
+inf+(-1*inf) == (0/0).isNan
 
 
+(0/0).isNumber
 
+isNan
+
+CheckBadValues.kr(
+
+(0/0).clip(0,1)
+
+0.ampdb.clip(-80,0)
+
+
+[1,2,3,4,5,nil].collectInPlace({|v|v?0});
+
+nil?1
 
 ~m
 
@@ -214,4 +234,177 @@ Server.default.waitForBoot({
 	~speaker = Speaker(0,[]);
 });
 )
+
+
+
+
+
+
+
+
+
+	// child node
+// bounding box of all below it
+//
+// point,
+//
+// each 'rectangle' is a 6-dimensional polygon (a search space)
+
+// True 'root' is an Rtree with no parent, search space of entire space
+
+Rtree {
+	var <>data; // maybe? or 'identifier'?
+	var <>nodeWidth;
+	var <>entries; // [] of R-trees, 'nodeWith' long;
+	var <>parent;
+	var <>boundingBox; // [] of point dimensions of an n-dimensional hypercube
+	var <>point;
+	// [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
+
+	*new{
+		|data, nodeWidth, children, parent, boundingBox,point|
+		^super.new.init(data,nodeWidth,children,parent,boundingBox,point);
+	}
+
+	init {
+		|data, nodeWidth, children, parent, boundingBox,point|
+		this.data = data;
+		this.nodeWidth = nodeWidth;
+		this.children = children?[]; // or insert...
+		this.parent = parent;
+		this.boundingBox = boundingBox;
+		this.point = point;
+	}
+
+	*insert{
+		|root,entry|
+		if(root.isLeaf(),{},{
+			root
+		});
+
+	}
+
+	withinBoundingBox{
+		|point|
+		// minDimensions and maxDimensions will get 2 opposite corners of the
+		// hyperCube
+		var minDimensions = this.boundingBox[0].copy;// FUCKUHG.
+		var maxDimensions = this.boundingBox[0].copy;
+		var isWithin = true;
+		if(point.size != minDimensions.size,{"point and bounding box are of different dimensions".throw;});
+
+		this.boundingBox.size.do{
+			|i|
+			this.boundingBox[i].size.do{
+				|j|
+				if( this.boundingBox[i][j] < minDimensions[j],{
+					minDimensions[j]=this.boundingBox[i][j];
+				});
+				if( this.boundingBox[i][j] > maxDimensions[j], {
+					maxDimensions[j] = this.boundingBox[i][j];
+				});
+			};
+		};
+		point.size.do{
+			|i|
+			isWithin = isWithin && (point[i]>= minDimensions[i]) && (point[i]<= maxDimensions[i]);
+		};
+
+		^isWithin;
+	}
+
+	isLeaf{
+		^this.children.isEmpty
+	}
+
+
+	*pointToBox{
+		|point|
+		^point!point.size;
+	}
+
+}
+
+
+
+
+
+//
+
+
+
+Computation.new(2,\hold,2)
+
+
+(
+{
+	var a = SinOsc.ar(440,mul:0.05*(0,0.01..0.07));
+	SendReply.kr(Impulse.kr(10),cmdName:"/amplitude",values:LPF.kr(Amplitude.kr(a),freq:10));
+	a
+}.play
+)
+(
+OSCdef(\a,{
+	|msg|
+	msg = msg.keep(-8).ampdb.clip(-80,0);
+	msg.postln;
+},path:"/amplitude",recvPort:NetAddr.langPort);
+)
+
+0.05.ampdb
+
+~n = NetAddr.new("127.0.0.1",NetAddr.langPort);
+
+~n.sendBundle(0,["/amplitude",1,2,3,4,5]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	(
+var boundingBox = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]];
+var minDimensions = boundingBox[0].copy;// seriously fuck this language.
+var maxDimensions = boundingBox[0].copy;
+var isWithin = true;
+var point = [1,0,1];
+if(point.size != minDimensions.size,{"point and bounding box are of different dimensions".throw;});
+
+
+boundingBox.size.do{
+	|i|
+	boundingBox[i].size.do{
+		|j|
+		if( boundingBox[i][j] < minDimensions[j],{
+			minDimensions[j]=boundingBox[i][j];
+		});
+
+		if( boundingBox[i][j] > maxDimensions[j], {
+			maxDimensions[j] = boundingBox[i][j];
+
+		});
+	};
+};
+minDimensions.postln;
+maxDimensions.postln;
+
+point.size.do{
+	|i|
+	isWithin = isWithin && (point[i]>= minDimensions[i]) && (point[i]<= maxDimensions[i]);
+};
+isWithin.postln;
+)
+
+
+
 

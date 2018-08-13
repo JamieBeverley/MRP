@@ -66,6 +66,7 @@ Computation.computationTypes = {
   "attack": {min:0, max:Infinity, stepsize:0.01, defaultInitialValue:0},
   "release": {min:0, max:Infinity, stepsize:0.01, defaultInitialValue:0},
   "corpus": {min:undefined, max:undefined, stepsize:undefined, defaultInitialValue:SCState.corpuses[0]},
+  "dur": {min:0.01, max:1, stepsize:0.01, defaultInitialValue: 0.5}
 }
 
 
@@ -154,7 +155,15 @@ Computation.prototype.getComputationSpecHTML = function(){
     var numInput = this.createNumInput(this.computation.type, 0.01, 0, Infinity, initialVal);
     container.appendChild(txt);
     container.appendChild(numInput);
-  }else if (this.computation.type == "corpus"){
+  } else if (this.computation.type == "dur"){
+    var txt = document.createTextNode("dur: ")
+    var initialVal = this.computation.value?this.computation.value:Computation.computationTypes["dur"].defaultInitialValue
+    initialVal = initialVal==0?0.01:initialVal;
+    this.setComputation({type:this.computation.type, value: initialVal});
+    var numInput = this.createNumInput(this.computation.type, 0.01, 0.01, 1, initialVal);
+    container.appendChild(txt);
+    container.appendChild(numInput);
+  } else if (this.computation.type == "corpus"){
     var dd = document.createElement('select');
     var initialIndex = SCState.corpuses.indexOf(this.computation.value);
     initialIndex = initialIndex==(-1)?0:initialIndex;

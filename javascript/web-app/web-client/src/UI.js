@@ -140,6 +140,8 @@ UI.unsharedWhileListening = function (){
   UI.subscribed = undefined
 }
 
+UI.begin = begin
+
 function begin (){
   shareDiv.className = "setting-button";
   muteDiv.className = "setting-button";

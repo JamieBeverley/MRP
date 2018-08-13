@@ -61,17 +61,61 @@ select.on('select', function (e){
 
 map.addInteraction(select);
 
+var keydown = []
+
+document.onkeydown = function (e){
+  keydown.push(e.key);
+  console.log(keydown);
+  if(keydown.includes(" ")){
+    if(keydown.includes("1")){
+      // London
+      simulateLocation([0.1278,51.5074])
+
+    } else if (keydown.includes("2")){
+      // Mexico city
+      simulateLocation([19.4, 99])
+    } else if (keydown.includes("3")){
+      // Tokyo
+      simulateLocation([139.6917,35.6895])
+    }else if (keydown.includes("4")){
+      // berlin
+      simulateLocation([13.4050, 52.5200])
+    }else if (keydown.includes("5")){
+      //
+      simulateLocation([5, 80.5200])
+    } else if (keydown.includes("6")){
+      //
+      simulateLocation([Math.random()*-140,Math.random()*140])
+    }
+  }
+}
+
+document.onkeyup = function(e) {
+  keydown = keydown.filter(function(x){return x!=e.key});
+  // esc key
+  if (e.key.toLowerCase() == "escape") { //
+
+  }
+}
 
 
-
-
-
-
-
-
-
-
-
+function simulateLocation(coordinates){
+  UI.sharing = true;
+  var msg = {type:"consented",coordinates:coordinates};
+  var sendRate = 100
+  UI.begin()
+  WebSocket.send(msg);
+  // TODO Maybe this is redundant? should you be able to hit 'share' before having started the machine listening?
+  // Audio.startMachineListening();
+  setInterval(function(){
+    var params = {}
+    for (var i in Audio.params){
+      params[i] = Audio.params[i].vals[0]
+    }
+    WebSocket.sendParams(params);
+  }, sendRate)
+  console.log("sharing")
+}
 
 
 WebSocket.init(audienceSource);
