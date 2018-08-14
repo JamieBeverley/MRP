@@ -6,11 +6,12 @@ var connectables = {
 	'items':[]
 }
 
+
 var performanceClient = {};
 
 var scIsSynchronized = false;
 var isGraphDump = false; // TODO this is hacky af, do something better
-
+var corpuses = [];
 var ws = new WebSocket.Server({port:9000});
 
 // var ws = new WebSocket("ws://127.0.0.1:9000");
@@ -39,10 +40,14 @@ scOSC.on('message',function(oscMsg){
 		safeSend(msg);
 	} else if (oscMsg.address == "/requestGraph"){
 		scIsSynchronized = false; // if it's requesting a graph dump, chances are it isn't synchronized
+		corpuses = [];
 		sendGraphDump();
 	} else if (oscMsg.address == "/confirmGraphDump"){
 		scIsSynchronized = true;
-	}else {
+	} else if (oscMsg.address == "/corpus"){
+		safeSend({type:"corpus",value: oscMsg.args[0]});
+		corpuses.push(oscMsg.args[0]);
+	} else {
 		console.log("********WARNING: OSC received from SC with no recognized address")
 	}
 })
@@ -65,6 +70,9 @@ function safeSend (msg){
 ws.on('connection', function(r){
   console.log("Connected")
 	performanceClient = r;
+	for(var i in corpuses){
+		safeSend({type:"corpus",value:corpuses[i]});
+	}
   performanceClient.addEventListener("message",(x)=>onMessage(x,r));
   performanceClient.addEventListener("error",(x)=>onError(x,r));
   performanceClient.addEventListener("close",(x)=>onClose(x,r));
@@ -83,7 +91,7 @@ function onClose(x,r){
 	connectables.edges = [];
 }
 
-
+var masterCorpus = ""
 function onMessage(message, r){
   var data = message.data; // unclear as to when this is necessary...
   var msg;
@@ -99,6 +107,7 @@ function onMessage(message, r){
 	if (msg.type!="updateConnectable"){
 		console.log("msg type: "+msg.type);
 	}
+
 	if (msg.type == "updateConnections"){
     console.log("connections update: ");
     updateConnections(msg.value);
@@ -111,7 +120,10 @@ function onMessage(message, r){
 		newConnectable(msg.value);
 	} else if (msg.type == "removeConnectable"){
 		deleteConnectable(msg.value);
-	}else {
+	} else if (msg.type == "corpus"){
+		masterCorpus = msg.value;
+		scSafeSend({address:"/corpus",args:[msg.value]});
+	} else {
 		console.log("WARNING unrecognized msg type recevied: "+msg.type)
 	}
 }

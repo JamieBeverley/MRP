@@ -83,6 +83,7 @@ var population  = new TileLayer({
 
 var layers = {
   none: none,
+  geo: geo,
   osm: osm,
   population: population,
   highways: highways,
@@ -176,6 +177,13 @@ layerSelect.onchange = function(){
     audienceLayer.setZIndex(1)
   }
 }
+var masterCorpus = ""
+var corpusSelect = document.getElementById('corpus-select');
+corpusSelect.onchange = function (){
+  masterCorpus = corpusSelect.value;
+  SCClientWS.send({type:"corpus",value:corpusSelect.value});
+}
+
 
 var cmdBox = document.getElementById('cmdBox');
 

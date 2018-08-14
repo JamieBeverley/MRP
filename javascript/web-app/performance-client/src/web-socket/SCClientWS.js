@@ -54,6 +54,16 @@ SCClientWS.onMessage = function(message){
 
   if(msg.type =="levels"){
     handleLevels(msg.value);
+  } else if (msg.type =="corpus"){
+    var corpusSelect = document.getElementById('corpus-select')
+    var option = document.createElement('option')
+    option.innerHTML = msg.value.slice(-15)==msg.value?msg.value:".."+msg.value.slice(-13);
+    option.value = msg.value;
+    corpusSelect.appendChild(option);
+
+
+  } else {
+    console.log("warning: unrecognized message from sc node program")
   }
 }
 

@@ -233,7 +233,6 @@ Computation : Connectable {
 			msg.removeAt(msg.indexOf('value'));
 		});
 		spec = Computation.parseMessage(msg);
-		msg.postln;
 		this.computationType = spec[1];
 		this.computationValue = spec[2];
 		this.setBasePattern();
@@ -284,8 +283,6 @@ Speaker : Connectable {
 			Pbind(
 				\midinote, Pfunc({
 					|event|
-					"in speaker: ".post;
-					event.postln;
 					if(event.keys.includes('connected'),{1},{\r});}),
 				\out, this.uid)
 		);

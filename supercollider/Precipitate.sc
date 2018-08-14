@@ -18,7 +18,13 @@ Precipitate {
 	classvar <>connectables;
 	classvar <>connections;
 	classvar <>amplitudes;
+	classvar <>corpuses;
+	classvar <>defaultCorpus; // Todo - eww
 
+	*initClass{
+		Precipitate.corpuses = [];
+		Precipitate.defaultCorpus =0;
+	}
 
 	*reset{
 		Precipitate.connectables = List.new();
@@ -52,10 +58,17 @@ Precipitate {
 			var cmdPFunc,oscCmdPFunc;
 
 			Precipitate.loadSynths;
-			corpuses.do{
-				|i|
-				Grain.readGrainsFromJSON(i,i);
-			};
+			Routine({
+				corpuses.do{
+
+					|i|
+					i.postln;
+					Grain.readGrainsFromJSON(i,i);
+					Precipitate.nodeOut.sendMsg("/corpus",i);
+					Precipitate.corpuses = Precipitate.corpuses.add(i.asSymbol);
+					2.wait;
+				};
+			}).play;
 
 
 			cmdPFunc = {
@@ -83,7 +96,7 @@ Precipitate {
 		if (~outBus.isNil,{~outBus = Bus.audio(Server.default,Server.default.options.numOutputBusChannels)});
 
 		SynthDef(\grain,{
-			|amp,out=0,spectralCentroid=0,loudness=0,pitchedness=0,clarity=0,strength=0,turbidity=0,corpus=0,attack=0.01,release=0.01,tolerance=0.05|
+			|amp,out=0,spectralCentroid=0,loudness=0,pitchedness=0,clarity=0,strength=0,turbidity=0,corpus=(-1),attack=0.01,release=0.01,tolerance=0.05|
 
 			SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",[corpus,tolerance,out,amp,attack,release,loudness,spectralCentroid,pitchedness,clarity,strength,turbidity]);
 			// SendReply.kr(Line.kr(-1,1,dur:0.01),"/grain",0.1!15);
@@ -112,7 +125,7 @@ Precipitate {
 		OSCdef(\playGrain,{
 			|msg|
 			var features = Dictionary.new();
-			var corpus = msg[3];
+			var corpus;
 			var tolerance = msg[4].asFloat;
 			var out = msg[5];
 			var amp = msg[6];
@@ -121,14 +134,17 @@ Precipitate {
 			var release = msg[8];
 			var match;
 
+			if(msg[3].asFloat == (-1),{corpus = Precipitate.defaultCorpus},{
+				corpus =msg[3].asInt;
+			});
+
+
 			features["rms"] = (msg[9].asFloat).clip(0,1); // TODO - this scaling is kind of custom
 			features["spectralCentroid"] = msg[10].asFloat.clip(0,1);
 			features["pitch"] = msg[11].asFloat.clip(0,1);
 			features["clarity"] = msg[12].asFloat.clip(0,1);
 			features["strength"] = msg[13].asFloat.clip(0,1);
 			features["turbidity"] = msg[14].asFloat.clip(0,1);
-			"playGrainTolerance: ".post;tolerance.postln;
-			"playGrain tolerance class: ".post;tolerance.class.postln;
 
 			match =Grain.findCloseEnoughGrain(Grain(features),list:Grain.corpus.asArray[corpus],tolerance:tolerance);
 
@@ -289,6 +305,14 @@ Precipitate {
 
 		},path:"/updateConnectable",recvPort: Precipitate.nodeRecvPort);
 
+		OSCdef(\corpus,{
+			|msg|
+			var corpus = msg[1];
+			msg.postln;
+			if(Precipitate.corpuses.indexOf(corpus.asSymbol).isNil,{"fuck".warn;msg.postln;corpus.postln;Precipitate.defaultCorpus=0},{
+				Precipitate.defaultCorpus = Precipitate.corpuses.indexOf(corpus.asSymbol);
+			});
 
+		},path:"/corpus",recvPort:Precipitate.nodeRecvPort);
 	}
 }

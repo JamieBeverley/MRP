@@ -104,10 +104,8 @@ Grain {
 		var minDist = target.features.keys.size;
 		var tolerantGrain;
 		var result;
-		"Grain tolerance: ".post;tolerance.postln;
+
 		tolerance = tolerance * target.features.keys.size; // scale to max distance
-		"Grain tolerance scaled: ".post;tolerance.postln;
-		"target ".post;target.features.postln;
 
 		block{
 			|break|
