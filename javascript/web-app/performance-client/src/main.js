@@ -86,7 +86,6 @@ var layers = {
   osm: osm,
   population: population,
   highways: highways,
-  audience: audienceLayer
 };
 
 var map = new Map({
@@ -170,8 +169,8 @@ layerSelect.onchange = function(){
 
   var l = layers[layerSelect.value]
   if (!l){console.log("Error: no layer named: "+layerSelect.value); return} else {
-    var b = map.getLayers().clear();
-    map.addLayer(layers["audience"])
+    map.getLayers().clear();
+    map.addLayer(audienceLayer)
     map.addLayer(l)
     l.setZIndex(0);
     audienceLayer.setZIndex(1)

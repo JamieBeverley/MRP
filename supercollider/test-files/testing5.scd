@@ -1,11 +1,11 @@
 (
 // Works in NIL
-Precipitate.boot(device:"MOTU Audio ASIO",corpusJsonPath:"C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json");
+Precipitate.boot(device:"MOTU Audio ASIO",corpuses:["C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json"]);
 
 )
 
 
-Precipitate.boot(corpusJsonPath:"C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json");
+Precipitate.boot(corpuses:["C:/Users/jamie/AppData/Local/SuperCollider/Extensions/SuperCollider-Extensions/Nil.sc/corpus/node9-grains.json"]);
 
 Server.default.options.sampleRate = 48000
 

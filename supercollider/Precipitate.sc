@@ -27,7 +27,7 @@ Precipitate {
 
 	*boot{
 
-		|device, nodeOutIP = "127.0.0.1", nodeOutPort=10000, nodeRecvPort=10001, corpusJsonPath|
+		|device, nodeOutIP = "127.0.0.1", nodeOutPort=10000, nodeRecvPort=10001, corpuses|
 
 		Precipitate.nodeRecvPort = nodeRecvPort;
 		Precipitate.nodeOut = NetAddr.new(nodeOutIP, nodeOutPort);
@@ -52,8 +52,10 @@ Precipitate {
 			var cmdPFunc,oscCmdPFunc;
 
 			Precipitate.loadSynths;
-
-			Grain.readGrainsFromJSON(corpusJsonPath,"c1");
+			corpuses.do{
+				|i|
+				Grain.readGrainsFromJSON(i,i);
+			};
 
 
 			cmdPFunc = {
