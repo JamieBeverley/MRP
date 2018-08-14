@@ -6,13 +6,21 @@ import OSM from 'ol/source/osm'
 import Draw from 'ol/interaction/draw'
 import VectorSource from 'ol/source/vector'
 import VectorLayer from 'ol/layer/vector'
+import ImageLayer from 'ol/layer/image'
 import Proj from 'ol/proj' // fromLonLat
+import Projection from 'ol/proj/projection'
 import Select from 'ol/interaction/select'
 import DragBox from 'ol/interaction/dragbox'
 import Condition from 'ol/events/condition'
+import Static from 'ol/source/imagestatic.js';
 import Interaction from 'ol/interaction'
 
 import Meyda from "meyda"
+
+
+import ImageArcGISRest from 'ol/source/ImageArcGISRest';
+import TileWMS from 'ol/source/TileWMS';
+import TileArcGISRest from 'ol/source/tilearcgisrest'
 
 // Local Imports
 import Remote from './connectables/Remote.js'
@@ -28,22 +36,71 @@ import SCClientWS from './web-socket/SCClientWS.js'
 
 SCClientWS.initSCClientWS();
 
+
 var audienceSource = new VectorSource({wrapX: false});
 var audienceLayer = new VectorLayer ({source:audienceSource});
+
+
+var osm =  new TileLayer({source: new OSM()})
+
+var geo =  new TileLayer({
+  source: new TileWMS({
+    url: 'https://ahocevar.com/geoserver/wms',
+    params: {
+      'LAYERS': 'ne:NE1_HR_LC_SR_W_DR',
+      'TILED': true
+    }
+  })
+})
+
+var highways = new ImageLayer({
+   source: new ImageArcGISRest({
+     ratio: 1,
+     params: {},
+     url: 'https://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Specialty/ESRI_StateCityHighway_USA/MapServer'
+   })
+})
+
+
+var none = new ImageLayer({
+  source: new Static({
+    attributions: '© <a href="http://xkcd.com/license.html">xkcd</a>',
+    url: location.hostname+":"+location.port+'/performance-client/build/hyper-cloud.jpg',
+    projection: new Projection({
+      code: 'xkcd-image',
+      units: 'pixels',
+      extent: [0, 0, 2268, 4032]
+    }),
+    imageExtent: [0, 0, 2268, 4032]
+  })
+})
+
+var population  = new TileLayer({
+  source: new TileArcGISRest({
+    url: 'https://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Demographics/ESRI_Population_World/MapServer'
+  })
+})
+
+var layers = {
+  none: none,
+  osm: osm,
+  population: population,
+  highways: highways,
+  audience: audienceLayer
+};
+
 var map = new Map({
   target: 'map',
-  layers: [
-    new TileLayer({source: new OSM()}),
-    audienceLayer
-  ],
+  layers: [none, audienceLayer],
   view: new View({
     center: Proj.fromLonLat([0,0]),
     zoom: 2,
     minResolution: 40075016.68557849 / 256 / Math.pow(2,7),
     maxResolution: 40075016.68557849 / 256 / 4
-  }),
-  interactions: Interaction.defaults({shiftDragZoom:false})
+  })
 });
+
+
 
 
 
@@ -52,10 +109,6 @@ var speakerCoordinateRatios = [[1/3,1],[2/3,1],[1,2/3],[1,1/3],[2/3,0],[1/3,0],[
 for (var i in speakerCoordinateRatios){
   new Speaker([0,0],audienceSource)
 }
-
-
-
-
 positionSpeakers()
 
 Connection.connections.on(['add','remove'],function(){
@@ -99,6 +152,31 @@ dragBox.on('boxstart', function() {
   // selectedFeatures.clear();
 });
 
+
+//   MASTER controls
+var master = document.getElementById('master');
+
+var layerSelect = document.getElementById('layer-select')
+
+for (var i in layers){
+  var option = document.createElement("option");
+  option.value = i;
+  option.innerHTML = i;
+  if(i == 'none'){option.selected = true}
+  layerSelect.appendChild(option);
+}
+
+layerSelect.onchange = function(){
+
+  var l = layers[layerSelect.value]
+  if (!l){console.log("Error: no layer named: "+layerSelect.value); return} else {
+    var b = map.getLayers().clear();
+    map.addLayer(layers["audience"])
+    map.addLayer(l)
+    l.setZIndex(0);
+    audienceLayer.setZIndex(1)
+  }
+}
 
 var cmdBox = document.getElementById('cmdBox');
 
